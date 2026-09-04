@@ -21,6 +21,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Deterministic evaluation fixture and dated public competitive evidence.
 - 100% statement and branch coverage gate.
 
+### Security
+
+- Raised the minimum supported `requests` and `urllib3` versions to patched releases.
+- Removed the unused MCP CLI extra and its unnecessary runtime dependency surface.
+- Updated the locked test toolchain to patched `pytest` and Pygments releases.
+
 ### Changed
 
 - Replaced the original Flask sidecar architecture with one asynchronous MCP stdio process.

@@ -29,11 +29,12 @@ classifiers = [
     "Topic :: Multimedia :: Sound/Audio",
 ]
 dependencies = [
-    "mcp[cli]>=2.0.0,<3",
+    "mcp>=2.0.0,<3",
     "platformdirs>=4.4,<5",
     "pydantic>=2.12,<3",
-    "requests>=2.32,<3",
+    "requests>=2.34.2,<3",
     "tidalapi==0.8.11",
+    "urllib3>=2.7.0,<3",
 ]
 
 [project.scripts]
@@ -49,7 +50,7 @@ Source = "https://github.com/sickn33/tidal-mcp"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.4,<9",
+    "pytest>=9.1.1,<10",
     "pytest-cov>=7,<8",
     "ruff>=0.13,<1",
 ]
