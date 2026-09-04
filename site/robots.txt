@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sickn33.github.io/tidal-mcp/sitemap.xml

@@ -42,6 +42,7 @@
   "scripts": {
     "check:metadata": "node scripts/check_release_metadata.mjs",
     "check:release": "node scripts/check_release_ref.mjs",
+    "check:site": "node scripts/check_site.mjs",
     "test": "node --test npm/tests/*.test.mjs",
     "prepack": "npm run check:metadata && npm test"
   },

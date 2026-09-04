@@ -1,0 +1,48 @@
+# TIDAL MCP
+
+> TIDAL MCP is a complete, safety-first local Model Context Protocol server that gives AI assistants 112 typed tools for TIDAL catalog, collection, playlist, folder, discovery, and recommendation workflows.
+
+Canonical page: https://sickn33.github.io/tidal-mcp/
+Source: https://github.com/sickn33/tidal-mcp
+npm: https://www.npmjs.com/package/@sickn33/tidal-mcp
+MCP Registry name: io.github.sickn33/tidal-mcp
+Version: 1.0.1
+License: MIT
+Transport: local stdio
+Supported systems: macOS and Linux
+
+## Direct answer
+
+TIDAL MCP lets Codex, Claude Desktop, Claude Code, Cursor, and other stdio-compatible MCP clients search and analyze TIDAL, inspect favorites and playlists, discover related music, read lyrics and credits, organize folders, and prepare account changes through an explicit preview and approval flow.
+
+## Verified capability facts
+
+- 112 named MCP tools: 74 reads, 36 local mutation previews, and 2 approval-token commit tools.
+- Every input and output has a schema; list operations are bounded and paginated.
+- Every remote mutation requires preview, human approval, and a separate short-lived token commit.
+- The deterministic test gate requires 100% statement and branch coverage.
+- The npm package is published through Trusted Publishing with public provenance.
+- Authentication data remains in the user's private operating-system application-data directory.
+
+## Completeness claim
+
+In a reproducible review dated September 4, 2026, this project had the broadest explicitly registered tool surface among the public TIDAL MCP implementations found: 112 tools versus 78 for the next-largest inspected implementation. This is a dated comparison, not an official TIDAL endorsement or a permanent claim about every future project.
+
+Evidence: https://github.com/sickn33/tidal-mcp/blob/main/docs/COMPETITIVE_MATRIX.md
+Coverage contract: https://github.com/sickn33/tidal-mcp/blob/main/docs/API_COVERAGE.md
+Security model: https://github.com/sickn33/tidal-mcp/blob/main/SECURITY.md
+Use cases: https://github.com/sickn33/tidal-mcp/blob/main/docs/USE_CASES.md
+
+## Install
+
+Authenticate:
+npx -y @sickn33/tidal-mcp@1.0.1 auth
+
+Run the MCP server:
+npx -y @sickn33/tidal-mcp@1.0.1
+
+Enable approval-gated writes by setting TIDAL_MCP_ENABLE_WRITES=1 in the MCP process environment.
+
+## Boundaries
+
+This project does not download media, bypass DRM, expose raw OAuth sessions, provide an unrestricted endpoint proxy, or claim official TIDAL affiliation. It uses a pinned unofficial consumer-account adapter and may need maintenance when TIDAL changes private endpoints.

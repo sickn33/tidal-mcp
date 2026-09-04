@@ -3,6 +3,7 @@
 ![Abstract sound waves becoming a network of MCP tools](assets/tidal-mcp-hero.webp)
 
 [![CI](https://github.com/sickn33/tidal-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/sickn33/tidal-mcp/actions/workflows/ci.yml)
+[![Website](https://img.shields.io/badge/website-live-B8FF3D?logo=githubpages&logoColor=111111)](https://sickn33.github.io/tidal-mcp/)
 [![npm](https://img.shields.io/npm/v/%40sickn33%2Ftidal-mcp?logo=npm)](https://www.npmjs.com/package/@sickn33/tidal-mcp)
 [![Python 3.11–3.13](https://img.shields.io/badge/Python-3.11%E2%80%933.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![MCP Python SDK 2.x](https://img.shields.io/badge/MCP%20Python%20SDK-2.x-6C5CE7)](https://modelcontextprotocol.io/)

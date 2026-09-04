@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TIDAL MCP Server — 112 Tools for AI Music Workflows</title>
+    <meta name="description" content="Connect Codex, Claude, Cursor, and other AI assistants to TIDAL with 112 typed tools, safe playlist writes, local authentication, and npm install.">
+    <meta name="theme-color" content="#050706">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+    <link rel="canonical" href="https://sickn33.github.io/tidal-mcp/">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="TIDAL MCP">
+    <meta property="og:title" content="TIDAL MCP Server — 112 Tools for AI Music Workflows">
+    <meta property="og:description" content="The complete, safety-first local MCP server for searching, analyzing, organizing, and safely modifying TIDAL.">
+    <meta property="og:url" content="https://sickn33.github.io/tidal-mcp/">
+    <meta property="og:image" content="https://sickn33.github.io/tidal-mcp/tidal-mcp-hero.webp">
+    <meta property="og:image:alt" content="Abstract sound waves becoming a connected network of AI tools">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="TIDAL MCP — 112 typed tools for AI assistants">
+    <meta name="twitter:description" content="Search, analyze, organize, and safely modify TIDAL from Codex, Claude, Cursor, and other MCP clients.">
+    <meta name="twitter:image" content="https://sickn33.github.io/tidal-mcp/tidal-mcp-hero.webp">
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://sickn33.github.io/tidal-mcp/#website",
+            "url": "https://sickn33.github.io/tidal-mcp/",
+            "name": "TIDAL MCP",
+            "description": "A complete, safety-first local MCP server for TIDAL."
+          },
+          {
+            "@type": "SoftwareSourceCode",
+            "@id": "https://sickn33.github.io/tidal-mcp/#source",
+            "name": "TIDAL MCP",
+            "description": "Open-source Model Context Protocol server with 112 typed tools for TIDAL catalog, collection, playlist, folder, and discovery workflows.",
+            "codeRepository": "https://github.com/sickn33/tidal-mcp",
+            "downloadUrl": "https://www.npmjs.com/package/@sickn33/tidal-mcp",
+            "license": "https://spdx.org/licenses/MIT.html",
+            "programmingLanguage": ["Python", "JavaScript"],
+            "runtimePlatform": ["Node.js 18+", "Python 3.11-3.13", "Model Context Protocol"],
+            "version": "1.0.1",
+            "datePublished": "2026-09-04",
+            "author": {
+              "@type": "Person",
+              "name": "sickn33",
+              "url": "https://github.com/sickn33"
+            }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://sickn33.github.io/tidal-mcp/#software",
+            "name": "TIDAL MCP",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "macOS, Linux",
+            "softwareVersion": "1.0.1",
+            "isAccessibleForFree": true,
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "url": "https://sickn33.github.io/tidal-mcp/",
+            "sameAs": [
+              "https://github.com/sickn33/tidal-mcp",
+              "https://www.npmjs.com/package/@sickn33/tidal-mcp",
+              "https://registry.modelcontextprotocol.io/v0.1/servers/io.github.sickn33%2Ftidal-mcp/versions/1.0.1"
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://sickn33.github.io/tidal-mcp/#faq-data",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is TIDAL MCP?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "TIDAL MCP is a local open-source Model Context Protocol server that gives compatible AI assistants 112 typed tools for searching, analyzing, organizing, and safely modifying a TIDAL account."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can TIDAL MCP create and edit playlists?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Writes are disabled by default. When enabled, every remote mutation requires a local preview followed by an explicit approval-token commit."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Which AI clients work with TIDAL MCP?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "TIDAL MCP works with local stdio-compatible MCP clients, including Codex, Claude Desktop, Claude Code, Cursor, and similar clients."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is TIDAL MCP official?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. TIDAL MCP is an independent, unofficial community project and is not affiliated with, endorsed by, or sponsored by TIDAL."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a class="wordmark" href="#top" aria-label="TIDAL MCP home">
+        <span>TIDAL</span><i aria-hidden="true">/</i><span>MCP</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#capabilities">Tools</a>
+        <a href="#safety">Safety</a>
+        <a href="#evidence">Evidence</a>
+        <a href="#install">Install</a>
+      </nav>
+      <a class="version-pill" href="https://github.com/sickn33/tidal-mcp/releases/tag/v1.0.1">v1.0.1</a>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow"><span></span> Local-first · open source · safety-gated</p>
+          <h1>Your AI deserves more than a playlist toy.</h1>
+          <p class="hero-lede">
+            TIDAL MCP gives Codex, Claude, Cursor, and other AI assistants a complete local control
+            surface for TIDAL: search, analysis, discovery, favorites, folders, and carefully
+            approved playlist writes.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#install">Install in one command <span aria-hidden="true">↘</span></a>
+            <a class="button button-ghost" href="https://github.com/sickn33/tidal-mcp">View source <span aria-hidden="true">↗</span></a>
+          </div>
+          <p class="micro-proof">MIT licensed · npm provenance · macOS and Linux · no developer key</p>
+        </div>
+
+        <div class="tool-constellation" aria-label="112 TIDAL MCP tools across eight capability groups">
+          <div class="constellation-core">
+            <strong>112</strong>
+            <span>typed tools</span>
+          </div>
+          <span class="orbit orbit-a" aria-hidden="true"></span>
+          <span class="orbit orbit-b" aria-hidden="true"></span>
+          <span class="orbit orbit-c" aria-hidden="true"></span>
+          <div class="signal signal-search"><b>01</b><span>Search</span></div>
+          <div class="signal signal-library"><b>02</b><span>Library</span></div>
+          <div class="signal signal-playlists"><b>03</b><span>Playlists</span></div>
+          <div class="signal signal-discovery"><b>04</b><span>Discovery</span></div>
+          <div class="signal signal-lyrics"><b>05</b><span>Lyrics</span></div>
+          <div class="signal signal-folders"><b>06</b><span>Folders</span></div>
+          <div class="signal signal-radio"><b>07</b><span>Radio</span></div>
+          <div class="signal signal-writes"><b>08</b><span>Safe writes</span></div>
+        </div>
+      </section>
+
+      <section class="proof-rail" aria-label="Verified coverage totals">
+        <div><strong>74</strong><span>read tools</span></div>
+        <div><strong>36</strong><span>exact previews</span></div>
+        <div><strong>2</strong><span>approval commits</span></div>
+        <div><strong>100%</strong><span>statement + branch coverage</span></div>
+      </section>
+
+      <section class="section capabilities" id="capabilities">
+        <div class="section-heading">
+          <p class="kicker">01 / Capability map</p>
+          <h2>One server. The whole listening system.</h2>
+          <p>
+            Every operation has a named tool, bounded inputs, structured output, pagination, and
+            safety annotations. No unrestricted private-endpoint proxy hiding behind one vague command.
+          </p>
+        </div>
+
+        <div class="capability-grid">
+          <article class="capability featured">
+            <span class="cap-number">01—18</span>
+            <h3>Catalog intelligence</h3>
+            <p>Tracks, albums, artists, videos, barcodes, ISRCs, credits, lyrics, artwork, and playback metadata.</p>
+            <ul><li>Multi-type search</li><li>Deep metadata</li><li>Public-field allowlist</li></ul>
+          </article>
+          <article class="capability">
+            <span class="cap-number">19—34</span>
+            <h3>Discovery</h3>
+            <p>Home, Explore, For You, genres, moods, hi-res, mixes, videos, and local hubs.</p>
+          </article>
+          <article class="capability">
+            <span class="cap-number">35—52</span>
+            <h3>Artists + albums</h3>
+            <p>Discographies, appearances, reviews, biographies, related artists, and similar albums.</p>
+          </article>
+          <article class="capability">
+            <span class="cap-number">53—74</span>
+            <h3>Your collection</h3>
+            <p>Favorites, owned and public playlists, counts, mixed items, folders, and account metadata.</p>
+          </article>
+          <article class="capability">
+            <span class="cap-number">75—110</span>
+            <h3>Mutation previews</h3>
+            <p>Create, edit, merge, reorder, favorite, organize, and delete—with an exact preview first.</p>
+          </article>
+          <article class="capability accent-card">
+            <span class="cap-number">111—112</span>
+            <h3>Approval commits</h3>
+            <p>Two deliberately narrow commit gates execute only the action stored in a short-lived local draft.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section ask-section" id="workflows">
+        <div class="section-heading compact">
+          <p class="kicker">02 / Speak normally</p>
+          <h2>Ask for outcomes, not API calls.</h2>
+        </div>
+        <div class="prompt-stack">
+          <article>
+            <span>ANALYZE</span>
+            <p>“Analyze my entire workout playlist: artist concentration, eras, duplicates, duration, and sequencing.”</p>
+          </article>
+          <article>
+            <span>DISCOVER</span>
+            <p>“Find 20 related tracks, exclude everything I already saved, and use at most two tracks per artist.”</p>
+          </article>
+          <article>
+            <span>ORGANIZE</span>
+            <p>“Prepare a new playlist from these recommendations and show me the exact changes before doing anything.”</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section safety" id="safety">
+        <div class="safety-copy">
+          <p class="kicker">03 / Human in the loop</p>
+          <h2>Writes are possible. Surprises are not.</h2>
+          <p>
+            Account mutations are disabled by default. When you enable them, the assistant still
+            cannot jump straight to a remote change. The protocol is deliberately split into an
+            inspectable local draft and a separately approved commit.
+          </p>
+          <a class="text-link" href="https://github.com/sickn33/tidal-mcp/blob/main/SECURITY.md">Read the security model <span aria-hidden="true">↗</span></a>
+        </div>
+        <ol class="safety-flow">
+          <li><span>1</span><div><strong>Preview</strong><p>Resolve the exact target, parameters, track order, and destructive flag.</p></div></li>
+          <li><span>2</span><div><strong>Approve</strong><p>You review the proposed action before any remote mutation is allowed.</p></div></li>
+          <li><span>3</span><div><strong>Commit</strong><p>A short-lived, single-use token executes only the stored action.</p></div></li>
+        </ol>
+      </section>
+
+      <section class="section evidence" id="evidence">
+        <div class="section-heading">
+          <p class="kicker">04 / Evidence, not adjectives</p>
+          <h2>The completeness claim is dated and reproducible.</h2>
+          <p>
+            In the public repository review performed on September 4, 2026, TIDAL MCP exposed the
+            broadest explicitly registered tool surface found. Tool count alone is not quality, so
+            the review also records schemas, write safety, tests, transports, commits, and limitations.
+          </p>
+        </div>
+
+        <div class="evidence-panel">
+          <div class="comparison" role="img" aria-label="TIDAL MCP has 112 registered tools and the next-largest reviewed implementation has 78">
+            <div class="bar ours"><span>TIDAL MCP</span><i></i><strong>112</strong></div>
+            <div class="bar next"><span>Next reviewed</span><i></i><strong>78</strong></div>
+          </div>
+          <div class="evidence-links">
+            <a href="https://github.com/sickn33/tidal-mcp/blob/main/docs/COMPETITIVE_MATRIX.md"><span>Reproducible comparison</span><b>View evidence ↗</b></a>
+            <a href="https://github.com/sickn33/tidal-mcp/actions/workflows/ci.yml"><span>Cross-platform test gate</span><b>View CI ↗</b></a>
+            <a href="https://www.npmjs.com/package/@sickn33/tidal-mcp"><span>Signed npm release</span><b>View provenance ↗</b></a>
+            <a href="https://registry.modelcontextprotocol.io/v0.1/servers/io.github.sickn33%2Ftidal-mcp/versions/1.0.1"><span>Official registry record</span><b>View record ↗</b></a>
+          </div>
+        </div>
+        <p class="evidence-note">Claim scope: public implementations discoverable and inspected on the snapshot date. This is not an official TIDAL endorsement or a permanent claim about every future project.</p>
+      </section>
+
+      <section class="section install" id="install">
+        <div class="install-heading">
+          <p class="kicker">05 / Start listening</p>
+          <h2>One command. Local credentials. Your account.</h2>
+        </div>
+        <div class="terminal" aria-label="Installation commands">
+          <div class="terminal-top"><span>01 — AUTHENTICATE</span><span>macOS / Linux</span></div>
+          <div class="command-row">
+            <code>npx -y @sickn33/tidal-mcp@1.0.1 auth</code>
+            <button class="copy-button" type="button" data-copy="npx -y @sickn33/tidal-mcp@1.0.1 auth" aria-label="Copy authentication command">COPY</button>
+          </div>
+          <div class="terminal-divider"></div>
+          <div class="terminal-top"><span>02 — MCP CONFIG</span><span>stdio</span></div>
+          <pre><code>{
+  "mcpServers": {
+    "tidal": {
+      "command": "npx",
+      "args": ["-y", "@sickn33/tidal-mcp@1.0.1"],
+      "env": { "TIDAL_MCP_ENABLE_WRITES": "1" }
+    }
+  }
+}</code></pre>
+        </div>
+        <div class="client-line"><span>Works with</span><b>Codex</b><b>Claude Desktop</b><b>Claude Code</b><b>Cursor</b><b>stdio MCP clients</b></div>
+      </section>
+
+      <section class="section faq" id="faq">
+        <div class="section-heading compact">
+          <p class="kicker">06 / Direct answers</p>
+          <h2>TIDAL MCP FAQ</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>What is TIDAL MCP?<span>+</span></summary>
+            <p>TIDAL MCP is a local open-source Model Context Protocol server that gives compatible AI assistants 112 typed tools for searching, analyzing, organizing, and safely modifying a TIDAL account.</p>
+          </details>
+          <details>
+            <summary>Can it create and edit playlists?<span>+</span></summary>
+            <p>Yes. Writes are disabled by default. When enabled, every remote mutation still requires a local preview followed by an explicit approval-token commit.</p>
+          </details>
+          <details>
+            <summary>Which AI clients work with it?<span>+</span></summary>
+            <p>Any local stdio-compatible MCP client should work, including Codex, Claude Desktop, Claude Code, Cursor, and similar clients.</p>
+          </details>
+          <details>
+            <summary>Where are credentials stored?<span>+</span></summary>
+            <p>The OAuth session remains in your operating system’s private application-data directory. Session objects and OAuth tokens are excluded from MCP responses.</p>
+          </details>
+          <details>
+            <summary>Is this an official TIDAL product?<span>+</span></summary>
+            <p>No. It is an independent, unofficial open-source project and is not affiliated with, endorsed by, or sponsored by TIDAL.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="closing">
+        <p>112 ways in.<br><em>One careful way to write.</em></p>
+        <div>
+          <a class="button button-primary" href="https://github.com/sickn33/tidal-mcp">Get TIDAL MCP <span aria-hidden="true">↗</span></a>
+          <span>Free · MIT · local-first</span>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <a class="wordmark" href="#top"><span>TIDAL</span><i aria-hidden="true">/</i><span>MCP</span></a>
+      <p>Independent community software. TIDAL is a trademark of its respective owner.</p>
+      <div><a href="https://github.com/sickn33/tidal-mcp">GitHub</a><a href="https://www.npmjs.com/package/@sickn33/tidal-mcp">npm</a><a href="llms.txt">llms.txt</a></div>
+    </footer>
+
+    <div class="copy-status" role="status" aria-live="polite"></div>
+    <script>
+      const button = document.querySelector("[data-copy]");
+      const status = document.querySelector(".copy-status");
+      button?.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.dataset.copy);
+          button.textContent = "COPIED";
+          status.textContent = "Authentication command copied.";
+          window.setTimeout(() => { button.textContent = "COPY"; }, 1800);
+        } catch {
+          status.textContent = "Copy failed. Select the command manually.";
+        }
+      });
+    </script>
+  </body>
+</html>

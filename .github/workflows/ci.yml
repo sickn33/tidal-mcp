@@ -74,5 +74,8 @@ jobs:
       - name: Test the npm launcher and release metadata
         run: npm test
 
+      - name: Validate the public landing page
+        run: npm run check:site
+
       - name: Verify the npm tarball allowlist
         run: npm pack --dry-run
