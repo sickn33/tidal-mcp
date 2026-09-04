@@ -1,4 +1,4 @@
-name: Publish npm release
+name: Publish npm and MCP Registry release
 
 on:
   release:
@@ -8,13 +8,14 @@ permissions:
   contents: read
 
 jobs:
-  npm:
-    name: Publish to npm
+  publish:
+    name: Publish verified release
     runs-on: ubuntu-latest
     environment:
       name: npm
       url: https://www.npmjs.com/package/@sickn33/tidal-mcp
     permissions:
+      contents: read
       id-token: write
     steps:
       - name: Check out repository
@@ -29,8 +30,35 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
 
+      - name: Install locked npm dependencies
+        run: npm ci
+
+      - name: Verify the GitHub tag and synchronized versions
+        run: npm run check:release -- "$GITHUB_REF_NAME"
+
       - name: Verify package contents and metadata
         run: npm pack --dry-run
 
-      - name: Publish with npm Trusted Publishing
+      - name: Publish to npm with Trusted Publishing
         run: npm publish
+
+      - name: Install the pinned MCP Registry publisher
+        env:
+          MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+          MCP_PUBLISHER_VERSION: 1.8.1
+        run: |
+          curl --fail --location --silent --show-error \
+            "https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz" \
+            --output mcp-publisher.tar.gz
+          echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum --check --strict
+          tar --extract --gzip --file mcp-publisher.tar.gz mcp-publisher
+          chmod +x mcp-publisher
+
+      - name: Validate MCP Registry metadata
+        run: ./mcp-publisher validate server.json
+
+      - name: Authenticate to the MCP Registry with GitHub OIDC
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish to the official MCP Registry
+        run: ./mcp-publisher publish server.json

@@ -1,6 +1,6 @@
 [project]
 name = "tidal-mcp"
-version = "1.0.0"
+version = "1.0.1"
 description = "The complete, safety-first Model Context Protocol server for TIDAL."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"

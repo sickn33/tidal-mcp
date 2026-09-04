@@ -5,6 +5,21 @@ All notable changes to TIDAL MCP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-09-04
+
+### Added
+
+- Automated MCP Registry publication through GitHub OIDC after each npm release.
+- Release-tag validation that fails closed when the GitHub tag and package version differ.
+- A public-package mode for the authenticated read-only smoke test.
+
+### Changed
+
+- Expanded the release metadata gate to cover both lockfiles, Python runtime version, citation
+  metadata, and the machine-readable `llms.txt` version.
+- Moved npm releases onto the complete Trusted Publishing path, which automatically emits public
+  provenance attestations without a long-lived write token.
+
 ## [1.0.0] - 2026-09-04
 
 ### Added

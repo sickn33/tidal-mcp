@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import os
@@ -18,12 +19,30 @@ async def call(client: Client, name: str, arguments: dict[str, object]) -> dict[
     return result.structured_content
 
 
-async def smoke() -> None:
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run authenticated read-only checks against a TIDAL MCP stdio command."
+    )
+    parser.add_argument(
+        "--command",
+        default=sys.executable,
+        help="stdio server executable (default: the current Python interpreter)",
+    )
+    parser.add_argument(
+        "--server-arg",
+        action="append",
+        dest="server_args",
+        help="repeatable argument passed to the stdio server command",
+    )
+    return parser.parse_args()
+
+
+async def smoke(command: str, server_args: list[str]) -> None:
     environment = dict(os.environ)
     environment.pop("TIDAL_MCP_ENABLE_WRITES", None)
     parameters = StdioServerParameters(
-        command=sys.executable,
-        args=["-m", "tidal_mcp"],
+        command=command,
+        args=server_args,
         env=environment,
     )
     async with Client(parameters, raise_exceptions=True) as client:
@@ -113,4 +132,5 @@ async def smoke() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(smoke())
+    arguments = parse_args()
+    asyncio.run(smoke(arguments.command, arguments.server_args or ["-m", "tidal_mcp"]))

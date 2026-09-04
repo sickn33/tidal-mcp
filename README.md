@@ -189,10 +189,23 @@ and mutation route through the MCP schemas and the pinned `tidalapi` adapter wit
 TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 112 tool
 schemas.
 
+Official releases are published from GitHub Actions through npm Trusted Publishing, with no
+long-lived npm write token. npm attaches provenance automatically, and the same release workflow
+publishes the matching metadata to the official MCP Registry through GitHub OIDC.
+
 An optional authenticated smoke test performs representative reads only:
 
 ```bash
 uv run python scripts/smoke_live_read_only.py
+```
+
+Release maintainers can test the exact public npm package through the same MCP client path:
+
+```bash
+uv run python scripts/smoke_live_read_only.py \
+  --command npx \
+  --server-arg=-y \
+  --server-arg=@sickn33/tidal-mcp@1.0.1
 ```
 
 The deterministic [evaluation suite](docs/EVALUATION.md) and the dated
@@ -223,8 +236,8 @@ directories.
 
 ## Project status
 
-Version **1.0.0** is the first complete public rewrite. npm is the primary installation channel;
-the package is also prepared for publication in the official MCP Registry.
+Version **1.0.1** is the first fully automated supply-chain release. npm is the primary
+installation channel, and every release is also published to the official MCP Registry.
 
 ## License, attribution, and trademark notice
 

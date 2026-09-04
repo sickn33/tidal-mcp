@@ -1,6 +1,6 @@
 {
   "name": "@sickn33/tidal-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The complete, safety-first MCP server for TIDAL with 112 typed tools.",
   "type": "module",
   "license": "MIT",
@@ -41,6 +41,7 @@
   ],
   "scripts": {
     "check:metadata": "node scripts/check_release_metadata.mjs",
+    "check:release": "node scripts/check_release_ref.mjs",
     "test": "node --test npm/tests/*.test.mjs",
     "prepack": "npm run check:metadata && npm test"
   },
