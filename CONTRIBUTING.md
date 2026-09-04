@@ -28,6 +28,8 @@ uv run ruff check .
 uv run pytest --cov=tidal_mcp --cov-report=term-missing
 uv run python scripts/smoke_stdio.py
 uv build
+npm test
+npm pack --dry-run
 ```
 
 Statement and branch coverage must remain at 100%. Tests must use deterministic fakes unless a

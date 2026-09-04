@@ -7,8 +7,9 @@ License: MIT
 Current version: 1.0.0
 Transport: local stdio
 Language: Python 3.11-3.13
-Package name: tidal-mcp
+npm package: @sickn33/tidal-mcp
 MCP registry name: io.github.sickn33/tidal-mcp
+Install: npx -y @sickn33/tidal-mcp
 
 ## Verified facts
 
@@ -21,6 +22,7 @@ MCP registry name: io.github.sickn33/tidal-mcp
 - OAuth sessions stay outside the repository and are excluded from tool outputs.
 - The repository enforces 100% statement and branch test coverage.
 - A real MCP stdio smoke test verifies the complete tool inventory.
+- The npm launcher delegates locally to the packaged, pinned Python implementation through uvx.
 - The September 4, 2026 public comparison found the next-largest reviewed TIDAL MCP surface to
   contain 78 registered tools.
 

@@ -1,0 +1,57 @@
+{
+  "name": "@sickn33/tidal-mcp",
+  "version": "1.0.0",
+  "description": "The complete, safety-first MCP server for TIDAL with 112 typed tools.",
+  "type": "module",
+  "license": "MIT",
+  "author": "sickn33",
+  "homepage": "https://github.com/sickn33/tidal-mcp#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sickn33/tidal-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sickn33/tidal-mcp/issues"
+  },
+  "keywords": [
+    "tidal",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "music",
+    "ai-assistant",
+    "claude",
+    "codex"
+  ],
+  "mcpName": "io.github.sickn33/tidal-mcp",
+  "bin": {
+    "tidal-mcp": "npm/bin/tidal-mcp.mjs",
+    "tidal-auth": "npm/bin/tidal-auth.mjs"
+  },
+  "files": [
+    "src/tidal_mcp/*.py",
+    "npm/bin/",
+    "npm/launcher.mjs",
+    "pyproject.toml",
+    "uv.lock",
+    "README.md",
+    "LICENSE",
+    "NOTICE.md",
+    "server.json"
+  ],
+  "scripts": {
+    "check:metadata": "node scripts/check_release_metadata.mjs",
+    "test": "node --test npm/tests/*.test.mjs",
+    "prepack": "npm run check:metadata && npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

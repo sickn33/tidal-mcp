@@ -54,3 +54,25 @@ jobs:
       - name: Build distributions
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13'
         run: uv build
+
+  npm-package:
+    name: npm package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Test the npm launcher and release metadata
+        run: npm test
+
+      - name: Verify the npm tarball allowlist
+        run: npm pack --dry-run

@@ -3,6 +3,7 @@
 ![Abstract sound waves becoming a network of MCP tools](assets/tidal-mcp-hero.webp)
 
 [![CI](https://github.com/sickn33/tidal-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/sickn33/tidal-mcp/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/%40sickn33%2Ftidal-mcp?logo=npm)](https://www.npmjs.com/package/@sickn33/tidal-mcp)
 [![Python 3.11–3.13](https://img.shields.io/badge/Python-3.11%E2%80%933.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![MCP Python SDK 2.x](https://img.shields.io/badge/MCP%20Python%20SDK-2.x-6C5CE7)](https://modelcontextprotocol.io/)
 [![Tests: 100% statements + branches](https://img.shields.io/badge/tests-100%25%20statements%20%2B%20branches-brightgreen)](#verified-quality)
@@ -72,6 +73,7 @@ in [API_COVERAGE.md](docs/API_COVERAGE.md).
 ### Requirements
 
 - macOS or Linux; macOS is live-account tested
+- Node.js 18 or newer
 - Python 3.11–3.13
 - [`uv`](https://docs.astral.sh/uv/)
 - A TIDAL account
@@ -79,7 +81,7 @@ in [API_COVERAGE.md](docs/API_COVERAGE.md).
 ### 1. Install and authenticate
 
 ```bash
-uvx --from tidal-mcp tidal-auth
+npx -y @sickn33/tidal-mcp auth
 ```
 
 Open the device-authorization URL, approve access in TIDAL, and return to the terminal. The session
@@ -88,8 +90,8 @@ is stored in your private operating-system application-data directory, not in th
 Check or remove it at any time:
 
 ```bash
-uvx --from tidal-mcp tidal-auth --status
-uvx --from tidal-mcp tidal-auth --logout --yes
+npx -y @sickn33/tidal-mcp auth --status
+npx -y @sickn33/tidal-mcp auth --logout --yes
 ```
 
 To install from source for development instead:
@@ -103,17 +105,16 @@ uv run tidal-auth
 
 ### 2. Connect an MCP client
 
-Use the absolute path returned by `which uvx`:
+Use npm directly; the package launches the pinned Python implementation locally through `uvx`:
 
 ```json
 {
   "mcpServers": {
     "tidal": {
-      "command": "/absolute/path/to/uvx",
+      "command": "npx",
       "args": [
-        "--from",
-        "tidal-mcp",
-        "tidal-mcp"
+        "-y",
+        "@sickn33/tidal-mcp"
       ]
     }
   }
@@ -222,8 +223,8 @@ directories.
 
 ## Project status
 
-Version **1.0.0** is the first complete public rewrite. The local stdio implementation is ready for
-real use; package-registry and remote-hosted distribution are separate future release channels.
+Version **1.0.0** is the first complete public rewrite. npm is the primary installation channel;
+the package is also prepared for publication in the official MCP Registry.
 
 ## License, attribution, and trademark notice
 

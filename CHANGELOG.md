@@ -9,7 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
-- PyPI distribution as `tidal-mcp` and official MCP Registry metadata.
+- npm distribution as `@sickn33/tidal-mcp` and official MCP Registry metadata.
 - Complete 112-tool MCP surface covering the pinned `tidalapi 0.8.11` user-facing application API.
 - Structured input and output schemas plus MCP safety annotations for every tool.
 - Catalog, editorial, discovery, lyrics, favorites, playlist, folder, mix, image, and playback

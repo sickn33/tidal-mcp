@@ -1,4 +1,4 @@
-name: Publish release
+name: Publish npm release
 
 on:
   release:
@@ -8,26 +8,29 @@ permissions:
   contents: read
 
 jobs:
-  pypi:
-    name: Publish to PyPI
+  npm:
+    name: Publish to npm
     runs-on: ubuntu-latest
     environment:
-      name: pypi
-      url: https://pypi.org/p/tidal-mcp
+      name: npm
+      url: https://www.npmjs.com/package/@sickn33/tidal-mcp
     permissions:
       id-token: write
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Install uv and Python
-        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
-          python-version: "3.13"
-          enable-cache: true
+          persist-credentials: false
 
-      - name: Build distributions
-        run: uv build
+      - name: Install Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
-      - name: Publish distributions with PyPI Trusted Publishing
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+      - name: Verify package contents and metadata
+        run: npm pack --dry-run
+
+      - name: Publish with npm Trusted Publishing
+        run: npm publish

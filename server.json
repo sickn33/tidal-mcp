@@ -11,10 +11,17 @@
   "websiteUrl": "https://github.com/sickn33/tidal-mcp#readme",
   "packages": [
     {
-      "registryType": "pypi",
-      "registryBaseUrl": "https://pypi.org",
-      "identifier": "tidal-mcp",
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@sickn33/tidal-mcp",
       "version": "1.0.0",
+      "runtimeHint": "npx",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "-y"
+        }
+      ],
       "transport": {
         "type": "stdio"
       },
