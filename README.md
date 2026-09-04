@@ -76,18 +76,10 @@ in [API_COVERAGE.md](docs/API_COVERAGE.md).
 - [`uv`](https://docs.astral.sh/uv/)
 - A TIDAL account
 
-### 1. Install
+### 1. Install and authenticate
 
 ```bash
-git clone https://github.com/sickn33/tidal-mcp.git
-cd tidal-mcp
-uv sync
-```
-
-### 2. Authenticate once
-
-```bash
-uv run tidal-auth
+uvx --from tidal-mcp tidal-auth
 ```
 
 Open the device-authorization URL, approve access in TIDAL, and return to the terminal. The session
@@ -96,25 +88,32 @@ is stored in your private operating-system application-data directory, not in th
 Check or remove it at any time:
 
 ```bash
-uv run tidal-auth --status
-uv run tidal-auth --logout --yes
+uvx --from tidal-mcp tidal-auth --status
+uvx --from tidal-mcp tidal-auth --logout --yes
 ```
 
-### 3. Connect an MCP client
+To install from source for development instead:
 
-Use absolute paths. Replace both example paths with the output of `which uv` and the location where
-you cloned this repository.
+```bash
+git clone https://github.com/sickn33/tidal-mcp.git
+cd tidal-mcp
+uv sync
+uv run tidal-auth
+```
+
+### 2. Connect an MCP client
+
+Use the absolute path returned by `which uvx`:
 
 ```json
 {
   "mcpServers": {
     "tidal": {
-      "command": "/absolute/path/to/uv",
+      "command": "/absolute/path/to/uvx",
       "args": [
-        "run",
-        "--directory",
-        "/absolute/path/to/tidal-mcp",
-        "tidal-local-mcp"
+        "--from",
+        "tidal-mcp",
+        "tidal-mcp"
       ]
     }
   }

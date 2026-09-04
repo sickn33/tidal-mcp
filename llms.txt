@@ -7,7 +7,7 @@ License: MIT
 Current version: 1.0.0
 Transport: local stdio
 Language: Python 3.11-3.13
-Package name: tidal-local-mcp
+Package name: tidal-mcp
 MCP registry name: io.github.sickn33/tidal-mcp
 
 ## Verified facts

@@ -1,5 +1,5 @@
 [project]
-name = "tidal-local-mcp"
+name = "tidal-mcp"
 version = "1.0.0"
 description = "The complete, safety-first Model Context Protocol server for TIDAL."
 readme = "README.md"
@@ -37,6 +37,7 @@ dependencies = [
 ]
 
 [project.scripts]
+tidal-mcp = "tidal_mcp.server:main"
 tidal-local-mcp = "tidal_mcp.server:main"
 tidal-auth = "tidal_mcp.auth_cli:main"
 

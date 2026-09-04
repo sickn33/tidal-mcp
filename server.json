@@ -1,0 +1,35 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.sickn33/tidal-mcp",
+  "title": "TIDAL MCP",
+  "description": "Search, analyze, organize, and safely modify TIDAL through 112 typed MCP tools.",
+  "repository": {
+    "url": "https://github.com/sickn33/tidal-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/sickn33/tidal-mcp#readme",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "tidal-mcp",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Set to 1 to allow approval-gated TIDAL account mutations.",
+          "default": "0",
+          "choices": ["0", "1"],
+          "name": "TIDAL_MCP_ENABLE_WRITES"
+        },
+        {
+          "description": "Optional private directory for the OAuth session and approval drafts.",
+          "name": "TIDAL_MCP_DATA_DIR"
+        }
+      ]
+    }
+  ]
+}

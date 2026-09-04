@@ -1,5 +1,6 @@
 include LICENSE
 include NOTICE.md
+include server.json
 include README.md
 include CHANGELOG.md
 include CITATION.cff
