@@ -1,0 +1,42 @@
+<evaluation>
+  <qa_pair>
+    <question>On the deterministic evaluation server, which username owns the authenticated fixture session?</question>
+    <answer>fixture</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Search the deterministic catalog for "fixture" with track results and a limit of 3. How many tracks are returned?</question>
+    <answer>3</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Search the deterministic catalog for "fixture" with track results. What is the title of the first track?</question>
+    <answer>Glass Harbor</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Search the deterministic catalog for "fixture" with album results. What album title is returned?</question>
+    <answer>Fixture Album</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Search the deterministic catalog for "fixture" with artist results. What artist name is returned?</question>
+    <answer>Northline</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>List playlists on the deterministic evaluation server. What is the title of playlist playlist-1?</question>
+    <answer>Evening Test</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>List the first favorite track on the deterministic evaluation server. What is its title?</question>
+    <answer>Blue Static</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Read up to 10 tracks from playlist playlist-1 on the deterministic evaluation server. How many tracks are returned?</question>
+    <answer>3</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Request recommendations from seed-1 with default filters on the deterministic evaluation server. How many tracks are returned?</question>
+    <answer>3</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Request recommendations from seed-1 and seed-2, require release year 2020 or later, explicit false, and at most one track per artist. Which two titles remain, in order?</question>
+    <answer>Glass Harbor, Blue Static</answer>
+  </qa_pair>
+</evaluation>

@@ -1,13 +1,16 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
+.DS_Store
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
 dist/
-wheels/
-*.egg-info
+build/
+*.egg-info/
+__pycache__/
+*.py[cod]
 
-# Virtual environments
-.venv
-
-# Others
-play.ipynb
+# Authentication and approval material must never enter git.
+session.json
+drafts/
+.tidal-local-mcp/

@@ -1,0 +1,19 @@
+{
+  "snapshot_date": "2026-09-04",
+  "counting_rule": "Explicit executable MCP tool registrations on the inspected default branch",
+  "results": [
+    {"repository": "sickn33/tidal-mcp", "tools": 112, "commit": "publication candidate"},
+    {"repository": "michalu/tidal-mcp", "tools": 78, "commit": "dc21c646ce49"},
+    {"repository": "lucaperret/tidal-cli", "tools": 40, "commit": "24f20a852978"},
+    {"repository": "teobouancheau/tidal-mcp", "tools": 35, "commit": "2ffa136e7fc0"},
+    {"repository": "farbfoto/TIDALMCP", "tools": 32, "commit": "dfcffa6cfef9"},
+    {"repository": "keenanbb/tidal-mcp", "tools": 27, "commit": "0a5729e2d372"},
+    {"repository": "avmeg8/tidal-mcp", "tools": 27, "commit": "8a828e34804a"},
+    {"repository": "dragomirweb/tidal-mcp", "tools": 19, "commit": "bbf77ae14ec6"},
+    {"repository": "ibeal/tidal-mcp", "tools": 19, "commit": "bf086bbdeffc"},
+    {"repository": "damilola-elegbede-org/tidal-mcp", "tools": 15, "commit": "0652be0d8ff1"},
+    {"repository": "redDawne/tidal-mcp-server", "tools": 9, "commit": "6561074d5a15"},
+    {"repository": "yuhuacheng/tidal-mcp", "tools": 7, "commit": "537aea1b8ea2"},
+    {"repository": "mikeysrecipes/tidal-mcp", "tools": 7, "commit": "1119bed54868"}
+  ]
+}

@@ -1,0 +1,30 @@
+# Changelog
+
+All notable changes to TIDAL MCP are documented here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.0.0] - 2026-09-04
+
+### Added
+
+- Complete 112-tool MCP surface covering the pinned `tidalapi 0.8.11` user-facing application API.
+- Structured input and output schemas plus MCP safety annotations for every tool.
+- Catalog, editorial, discovery, lyrics, favorites, playlist, folder, mix, image, and playback
+  metadata reads.
+- Deterministic multi-seed recommendation filters with source provenance.
+- Universal local preview and single-use approval-token commit flow for remote mutations.
+- Private persistent authentication and draft storage outside the repository.
+- Real stdio and authenticated read-only smoke checks.
+- Deterministic evaluation fixture and dated public competitive evidence.
+- 100% statement and branch coverage gate.
+
+### Changed
+
+- Replaced the original Flask sidecar architecture with one asynchronous MCP stdio process.
+- Reworked result serialization around explicit public fields and paginated structured models.
+
+### Removed
+
+- Temporary OAuth storage, raw session exposure, and direct unapproved writes.

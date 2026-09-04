@@ -1,0 +1,26 @@
+{
+  "question": "Which public TIDAL music MCP implementation has the broadest explicit tool surface as of 2026-09-04?",
+  "qualification": [
+    "Public source repository",
+    "MCP server for the TIDAL music service",
+    "Executable named tool registrations on the default branch"
+  ],
+  "exclusions": [
+    "Tidal energy software",
+    "Tidal Cyber",
+    "Retidal",
+    "Clients without an MCP server",
+    "Exact forks without distinct implementation changes"
+  ],
+  "fields": [
+    "repository",
+    "default-branch commit",
+    "registered tool count",
+    "scope",
+    "authentication and transport notes",
+    "safety and test evidence"
+  ],
+  "freshness": "Default branches cloned and inspected on 2026-09-04",
+  "source_policy": "Primary GitHub repositories and official project documentation",
+  "budget": "Four discovery queries and thirteen qualified repository inspections"
+}

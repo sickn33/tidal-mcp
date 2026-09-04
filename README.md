@@ -1,130 +1,236 @@
-# TIDAL MCP: My Custom Picks 🌟🎧
+# TIDAL MCP — Complete, Safety-First TIDAL Server for AI Assistants
 
-![Demo: Music Recommendations in Action](./assets/tidal_mcp_demo.gif)
+![Abstract sound waves becoming a network of MCP tools](assets/tidal-mcp-hero.webp)
 
-Most music platforms offer recommendations — Daily Discovery, Top Artists, New Arrivals, etc. — but even with the state-of-the-art system, they often feel too "aggregated". I wanted something more custom and context-aware.
+[![CI](https://github.com/sickn33/tidal-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/sickn33/tidal-mcp/actions/workflows/ci.yml)
+[![Python 3.11–3.13](https://img.shields.io/badge/Python-3.11%E2%80%933.13-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![MCP Python SDK 2.x](https://img.shields.io/badge/MCP%20Python%20SDK-2.x-6C5CE7)](https://modelcontextprotocol.io/)
+[![Tests: 100% statements + branches](https://img.shields.io/badge/tests-100%25%20statements%20%2B%20branches-brightgreen)](#verified-quality)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-With TIDAL MCP, you can ask for things like:
-> *"Based on my last 10 favorites, find similar tracks — but only ones from recent years."*
->
-> *"Find me tracks like those in this playlist, but slower and more acoustic."*
+**TIDAL MCP** connects Codex, Claude Desktop, Claude Code, Cursor, and other
+stdio-compatible Model Context Protocol clients to a TIDAL account. Search the catalog,
+analyze playlists, discover music, read lyrics and credits, manage favorites, organize folders,
+and safely create or edit playlists through **112 typed MCP tools**.
 
-The LLM filters and curates results using your input, finds similar tracks via TIDAL’s API, and builds new playlists directly in your account.
+> **Positioning:** as of September 4, 2026, this is the most complete public TIDAL MCP
+> implementation found in a reproducible review of the current GitHub landscape. The claim is
+> based on registered tool coverage, structured schemas, mutation safety, and automated test
+> evidence—not marketing alone. See the [dated comparison](docs/COMPETITIVE_MATRIX.md).
 
-<a href="https://glama.ai/mcp/servers/@yuhuacheng/tidal-mcp">
-  <img width="400" height="200" src="https://glama.ai/mcp/servers/@yuhuacheng/tidal-mcp/badge" alt="TIDAL: My Custom Picks MCP server" />
-</a>
+<!-- mcp-name: io.github.sickn33/tidal-mcp -->
 
-## Features
+## Why this TIDAL MCP exists
 
-- 🌟 **Music Recommendations**: Get personalized track recommendations based on your listening history **plus your custom criteria**.
-- ၊၊||၊ **Playlist Management**: Create, view, and manage your TIDAL playlists
+Most TIDAL integrations expose a small selection of search and playlist commands. TIDAL MCP is
+built as a complete local control surface for AI agents while keeping credentials and approvals
+on your machine.
 
-## Quick Start
+- **112 discoverable tools:** 74 reads, 36 mutation previews, and 2 approval-token commits.
+- **Broad account coverage:** catalog, editorial pages, recommendations, lyrics, favorites,
+  playlists, folders, mixes, images, and playback metadata.
+- **Safe writes:** mutations are off by default and always require preview → explicit approval →
+  commit.
+- **Private authentication:** OAuth session data never travels through MCP tool responses.
+- **Typed and bounded:** every input and output has a schema, limits, and MCP safety annotations.
+- **Verified quality:** 100% statement and branch test coverage plus a real stdio handshake and an
+  optional authenticated read-only smoke test.
 
-### Prerequisites
+## What can an AI assistant do with TIDAL?
 
-- Python 3.10+
-- [uv](https://github.com/astral-sh/uv) (Python package manager)
-- TIDAL subscription
+Ask naturally:
 
-### Installation
+- “Analyze my entire workout playlist: artist concentration, eras, duplicates, duration, and
+  sequencing.”
+- “Find 20 tracks related to these three songs, exclude anything already in my playlist, and use
+  at most two tracks per artist.”
+- “Compare an artist’s albums, EPs, singles, appearances, top tracks, biography, and related
+  artists.”
+- “Show my favorite albums and playlists, then summarize how my collection is distributed.”
+- “Prepare a new playlist from these recommendations and show me the exact changes before doing
+  anything.”
+- “Move these playlists into a folder, but ask for confirmation before changing my account.”
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/yuhuacheng/tidal-mcp.git
-   cd tidal-mcp
-   ```
+See [real-world workflows and prompt examples](docs/USE_CASES.md).
 
-2. Create a virtual environment and install dependencies using uv:
-   ```bash
-   uv venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
+## Tool coverage
 
-3. Install the package with all dependencies from the pyproject.toml file:
-   ```bash
-   uv pip install --editable .
-   ```
+| Surface | Tools | Examples |
+| --- | ---: | --- |
+| Authentication, search, recommendations | 3 | status, multi-type search, deterministic multi-seed recommendations |
+| Catalog, editorial, discovery | 49 | tracks, albums, artists, videos, lyrics, credits, genres, Home, Explore, For You |
+| Collection, playlists, folders | 22 | favorites, counts, playlist items, owned/public playlists, folders, mixes |
+| Exact mutation previews | 36 | playlist CRUD, item moves, visibility, favorites, folders |
+| Approval-token commits | 2 | universal commit and compatible playlist-creation alias |
 
-   This will install all dependencies defined in the pyproject.toml file and set up the project in development mode.
+Every list operation is bounded and paginated. Every result uses a public-field allowlist so OAuth
+tokens, request clients, and internal session data cannot enter model context. The complete map is
+in [API_COVERAGE.md](docs/API_COVERAGE.md).
 
+## Quick start
 
-## MCP Client Configuration
+### Requirements
 
-### Claude Desktop Configuration
+- macOS or Linux; macOS is live-account tested
+- Python 3.11–3.13
+- [`uv`](https://docs.astral.sh/uv/)
+- A TIDAL account
 
-To add this MCP server to Claude Desktop, you need to update the MCP configuration file. Here's an example configuration:
-(you can specify the port by adding an optional `env` section with the `TIDAL_MCP_PORT` environment variable)
+### 1. Install
+
+```bash
+git clone https://github.com/sickn33/tidal-mcp.git
+cd tidal-mcp
+uv sync
+```
+
+### 2. Authenticate once
+
+```bash
+uv run tidal-auth
+```
+
+Open the device-authorization URL, approve access in TIDAL, and return to the terminal. The session
+is stored in your private operating-system application-data directory, not in the repository.
+
+Check or remove it at any time:
+
+```bash
+uv run tidal-auth --status
+uv run tidal-auth --logout --yes
+```
+
+### 3. Connect an MCP client
+
+Use absolute paths. Replace both example paths with the output of `which uv` and the location where
+you cloned this repository.
 
 ```json
 {
   "mcpServers": {
-    "TIDAL Integration": {
-      "command": "/path/to/your/uv",
-      "env": {
-        "TIDAL_MCP_PORT": "5100"
-      },
+    "tidal": {
+      "command": "/absolute/path/to/uv",
       "args": [
         "run",
-        "--with",
-        "requests",
-        "--with",
-        "mcp[cli]",
-        "--with",
-        "flask",
-        "--with",
-        "tidalapi",
-        "mcp",
-        "run",
-        "/path/to/your/project/tidal-mcp/mcp_server/server.py"
+        "--directory",
+        "/absolute/path/to/tidal-mcp",
+        "tidal-local-mcp"
       ]
     }
   }
 }
 ```
 
-Example scrrenshot of the MCP configuration in Claude Desktop:
-![Claude MCP Configuration](./assets/claude_desktop_config.png)
+Restart or reconnect your MCP client, then ask: **“Check my TIDAL authentication status.”**
 
-### Steps to Install MCP Configuration
+## Enable safe account writes
 
-1. Open Claude Desktop
-2. Go to Settings > Developer
-3. Click on "Edit Config"
-4. Paste the modified JSON configuration
-5. Save the configuration
-6. Restart Claude Desktop
+Remote writes are disabled unless the MCP process receives:
 
-## Suggested Prompt Starters
-Once configured, you can interact with your TIDAL account through a LLM by asking questions like:
+```json
+"env": {
+  "TIDAL_MCP_ENABLE_WRITES": "1"
+}
+```
 
-- *“Recommend songs like those in this playlist, but slower and more acoustic.”*
-- *“Create a playlist based on my top tracks, but focused on chill, late-night vibes.”*
-- *“Find songs like these in playlist XYZ but in languages other than English.”*
+Enabling the flag does **not** make mutations automatic. Every change still uses three explicit
+steps:
 
-*💡 You can also ask the model to:*
-- Use more tracks as seeds to broaden the inspiration.
-- Return more recommendations if you want a longer playlist.
-- Or delete a playlist if you’re not into it — no pressure!
+1. A named `tidal_preview_*` tool records the exact parameters and target metadata in a private,
+   short-lived local draft.
+2. The assistant presents that preview to the user.
+3. Only after approval does `tidal_commit_action` accept the single-use token and execute exactly
+   the recorded action.
 
-## Available Tools
+Successful token replays return the stored result. Expired tokens fail closed. Ambiguous failed
+writes are locked to reduce duplicate effects. Destructive previews are clearly annotated.
 
-The TIDAL MCP integration provides the following tools:
+## Supported TIDAL operations
 
-- `tidal_login`: Authenticate with TIDAL through browser login flow
-- `get_favorite_tracks`: Retrieve your favorite tracks from TIDAL
-- `recommend_tracks`: Get personalized music recommendations
-- `create_tidal_playlist`: Create a new playlist in your TIDAL account
-- `get_user_playlists`: List all your playlists on TIDAL
-- `get_playlist_tracks`: Retrieve all tracks from a specific playlist
-- `delete_tidal_playlist`: Delete a playlist from your TIDAL account
+- **Search and lookup:** tracks, albums, artists, playlists, videos, mixes, users, barcodes, ISRCs.
+- **Track intelligence:** details, radio, radio mixes, lyrics, credits, playback metadata, temporary
+  account-scoped URLs.
+- **Artists and albums:** discographies, EPs and singles, appearances, biographies, reviews,
+  related artists, similar albums, resolutions, artwork, and editorial pages.
+- **Discovery:** Home, Explore, For You, genres, moods, mixes, videos, hi-res, and local genre hubs.
+- **Collection:** favorite tracks, albums, artists, playlists, videos, mixes, folders, and counts.
+- **Playlists:** metadata, tracks, mixed items, counts, images, create/edit/delete/clear/merge,
+  visibility, add/remove/reorder operations.
+- **Folders:** inspect, create, rename, delete, and move collection-tree items.
 
-## License
+The server intentionally does not download media, bypass DRM, expose raw OAuth methods, or provide
+an unrestricted private-endpoint proxy.
 
-[MIT License](LICENSE)
+## Configuration
 
-## Acknowledgements
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `TIDAL_MCP_ENABLE_WRITES` | `0` | Permit approval-token commits for allowlisted account mutations |
+| `TIDAL_MCP_DATA_DIR` | OS application-data directory | Session and draft root |
+| `TIDAL_MCP_SESSION_FILE` | `<data-dir>/session.json` | Override the OAuth session path |
+| `TIDAL_MCP_DRAFT_TTL_SECONDS` | `900` | Approval lifetime, between 60 and 3600 seconds |
 
-- [Model Context Protocol (MCP)](https://github.com/modelcontextprotocol/python-sdk)
-- [TIDAL Python API](https://github.com/tamland/python-tidal)
+New private directories use mode `0700` and sensitive files use `0600` on systems supporting POSIX
+permissions. Existing custom parent directories are never silently permission-rewritten.
+
+## Verified quality
+
+```bash
+uv sync --all-groups
+uv run ruff format --check .
+uv run ruff check .
+uv run pytest --cov=tidal_mcp --cov-report=term-missing
+uv run python scripts/smoke_stdio.py
+uv build
+```
+
+The coverage gate is **100% for statements and branches**. Tests exercise every registered read
+and mutation route through the MCP schemas and the pinned `tidalapi` adapter without contacting
+TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 112 tool
+schemas.
+
+An optional authenticated smoke test performs representative reads only:
+
+```bash
+uv run python scripts/smoke_live_read_only.py
+```
+
+The deterministic [evaluation suite](docs/EVALUATION.md) and the dated
+[competitive matrix](docs/COMPETITIVE_MATRIX.md) make quality claims inspectable.
+
+## Architecture and compatibility
+
+TIDAL provides developer APIs, but developer credentials are issued separately and the official
+surface does not cover every consumer-account workflow. This local server therefore pins
+`tidalapi 0.8.11`, an unofficial adapter around TIDAL’s consumer endpoints, for broad device-login
+coverage. TIDAL changes can require maintenance; the pinned dependency and live smoke test make
+that risk visible.
+
+The server uses the MCP Python SDK over stdio. Blocking upstream calls run outside the async
+protocol event loop. It does not launch a Flask sidecar or store authentication in temporary
+directories.
+
+## Documentation
+
+- [Complete API coverage](docs/API_COVERAGE.md)
+- [Use cases and prompt cookbook](docs/USE_CASES.md)
+- [Frequently asked questions](docs/FAQ.md)
+- [Security policy](SECURITY.md)
+- [Competitive evidence](docs/COMPETITIVE_MATRIX.md)
+- [Deterministic evaluation](docs/EVALUATION.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+
+## Project status
+
+Version **1.0.0** is the first complete public rewrite. The local stdio implementation is ready for
+real use; package-registry and remote-hosted distribution are separate future release channels.
+
+## License, attribution, and trademark notice
+
+MIT. This repository preserves the history and license of
+[`yuhuacheng/tidal-mcp`](https://github.com/yuhuacheng/tidal-mcp); see [NOTICE.md](NOTICE.md).
+
+TIDAL is a trademark of its respective owner. This is an independent, unofficial community
+project and is not affiliated with, endorsed by, or sponsored by TIDAL. No TIDAL logo or album
+artwork is bundled with the project.

@@ -1,0 +1,1 @@
+"""Deterministic MCP evaluation harness."""

@@ -1,0 +1,9 @@
+{
+  "discovery_queries": 4,
+  "qualified_repositories": 13,
+  "cloned_competitors": 11,
+  "local_upstreams_inspected": 1,
+  "official_guideline_sources": 1,
+  "result": "112 tools versus 78 in the next-largest reviewed implementation",
+  "known_gap": "Search indexing cannot prove that no undiscoverable public or private server exists"
+}
