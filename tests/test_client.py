@@ -449,3 +449,13 @@ def test_favorites_without_usable_count_fall_back_to_length_sentinel() -> None:
     assert full_page.count == 3
     assert full_page.has_more is True
     assert full_page.next_offset == 3
+
+
+def test_undercounting_total_cannot_end_a_favorite_track_walk_early() -> None:
+    client = TidalClient(short_favorites_session(4, lambda: 10))
+
+    page = client.list_favorite_tracks(limit=3, offset=9)
+    assert [item.id for item in page.items] == ["0", "1", "2"]
+    assert page.count == 3
+    assert page.has_more is True
+    assert page.next_offset == 12

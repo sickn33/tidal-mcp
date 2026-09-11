@@ -117,3 +117,24 @@ def test_defensive_value_and_text_helpers() -> None:
     assert _value(SimpleNamespace(value=None), "value", "safe") == "safe"
     assert _text(None) is None
     assert _text(datetime(2024, 1, 1, tzinfo=UTC)).startswith("2024-01-01")
+
+
+def test_counted_pages_stay_paginated_when_empty_or_undercounted() -> None:
+    empty = format_catalog_result("list", [], limit=3, offset=12, total=657)
+    assert empty.items == []
+    assert empty.count == 0
+    assert empty.limit == 3
+    assert empty.offset == 12
+    assert empty.has_more is True
+    assert empty.next_offset == 15
+
+    exhausted = format_catalog_result("list", [], limit=3, offset=654, total=657)
+    assert exhausted.count == 0
+    assert exhausted.has_more is False
+    assert exhausted.next_offset is None
+
+    nodes = [SimpleNamespace(id=str(index)) for index in range(4)]
+    undercounted = format_catalog_result("list", nodes, limit=3, offset=9, total=10)
+    assert [item.id for item in undercounted.items] == ["0", "1", "2"]
+    assert undercounted.has_more is True
+    assert undercounted.next_offset == 12

@@ -93,6 +93,14 @@ def _search_bucket(result: Any, name: str) -> list[Any]:
     return _sequence(value)
 
 
+_FAVORITE_TOTAL_METHODS: dict[str, str] = {
+    "tidal_list_favorite_albums": "get_albums_count",
+    "tidal_list_favorite_artists": "get_artists_count",
+    "tidal_list_favorite_playlists": "get_playlists_count",
+    "tidal_list_favorite_videos": "get_videos_count",
+}
+
+
 class TidalClient:
     """Authenticated TIDAL operations with stable model conversion."""
 
@@ -227,7 +235,7 @@ class TidalClient:
                     order_direction="DESC",
                 )
             tracks = [format_track(item) for item in items]
-            total = self._favorites_total(favorites)
+            total = self._favorites_count(favorites, "get_tracks_count")
         except Exception as exc:
             self._raise_operation_error("list favorite tracks", exc)
         return self._track_page(tracks, limit, offset, total=total)
@@ -529,12 +537,16 @@ class TidalClient:
             warnings.append(
                 "Playback URLs are temporary and account-scoped; no media was downloaded."
             )
+        total = None
+        if operation in _FAVORITE_TOTAL_METHODS and p.get("limit") is not None:
+            total = self._favorites_count(favorites, _FAVORITE_TOTAL_METHODS[operation])
         return format_catalog_result(
             operation,
             value,
             limit=p.get("limit"),
             offset=p.get("offset"),
             warnings=warnings,
+            total=total,
         )
 
     def preview_mutation(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -689,7 +701,7 @@ class TidalClient:
     def _track_page(
         tracks: list[Track], limit: int, offset: int, *, total: int | None = None
     ) -> TrackPage:
-        has_more = len(tracks) > limit if total is None else offset + limit < total
+        has_more = len(tracks) > limit or (total is not None and offset + limit < total)
         return TrackPage(
             items=tracks[:limit],
             count=min(len(tracks), limit),
@@ -700,9 +712,9 @@ class TidalClient:
         )
 
     @staticmethod
-    def _favorites_total(favorites: Any) -> int | None:
+    def _favorites_count(favorites: Any, method: str) -> int | None:
         try:
-            return int(favorites.get_tracks_count())
+            return int(getattr(favorites, method)())
         except Exception as exc:
             LOGGER.info("TIDAL favorites count unavailable (%s)", type(exc).__name__)
             return None

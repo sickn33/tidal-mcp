@@ -279,3 +279,142 @@ def test_mutation_partial_playlist_result_is_preserved(monkeypatch: pytest.Monke
     )
     assert result.status == "partial"
     assert result.details == {"tracks_requested": 2, "tracks_added": 1}
+
+
+def favorites_listing_session(page_items: int, **counters: Any) -> SimpleNamespace:
+    def listing(**_kwargs: Any) -> list[SimpleNamespace]:
+        return [SimpleNamespace(id=str(index)) for index in range(page_items)]
+
+    favorites = SimpleNamespace(
+        albums=listing,
+        artists=listing,
+        playlists=listing,
+        videos=listing,
+        mixes=listing,
+    )
+    for name, value in counters.items():
+        setattr(favorites, name, value)
+    return SimpleNamespace(user=SimpleNamespace(favorites=favorites))
+
+
+def listing_params(limit: int, offset: int) -> dict[str, Any]:
+    return {"limit": limit, "offset": offset, "order": None, "order_direction": None}
+
+
+def test_favorite_album_short_page_reports_more_from_collection_total() -> None:
+    client = TidalClient(favorites_listing_session(2, get_albums_count=lambda: 657))
+
+    first = client.execute_read("tidal_list_favorite_albums", listing_params(3, 0))
+    assert [item.id for item in first.items] == ["0", "1"]
+    assert first.count == 2
+    assert first.limit == 3
+    assert first.offset == 0
+    assert first.has_more is True
+    assert first.next_offset == 3
+
+    middle = client.execute_read("tidal_list_favorite_albums", listing_params(3, 300))
+    assert middle.has_more is True
+    assert middle.next_offset == 303
+
+
+def test_favorite_album_walk_ends_when_offset_reaches_collection_total() -> None:
+    client = TidalClient(favorites_listing_session(2, get_albums_count=lambda: 657))
+
+    tail = client.execute_read("tidal_list_favorite_albums", listing_params(3, 654))
+    assert tail.count == 2
+    assert tail.offset == 654
+    assert tail.has_more is False
+    assert tail.next_offset is None
+
+
+def test_every_counted_favorite_listing_uses_its_own_collection_total() -> None:
+    client = TidalClient(
+        favorites_listing_session(
+            2,
+            get_artists_count=lambda: 40,
+            get_playlists_count=lambda: 12,
+            get_videos_count=lambda: 3,
+        )
+    )
+
+    artists = client.execute_read("tidal_list_favorite_artists", listing_params(5, 10))
+    assert artists.has_more is True
+    assert artists.next_offset == 15
+
+    playlists = client.execute_read("tidal_list_favorite_playlists", listing_params(4, 8))
+    assert playlists.has_more is False
+    assert playlists.next_offset is None
+
+    videos = client.execute_read("tidal_list_favorite_videos", listing_params(2, 0))
+    assert videos.has_more is True
+    assert videos.next_offset == 2
+
+
+def test_favorite_mixes_short_page_still_uses_the_length_sentinel() -> None:
+    client = TidalClient(
+        favorites_listing_session(
+            2,
+            get_albums_count=lambda: 657,
+            get_artists_count=lambda: 657,
+            get_playlists_count=lambda: 657,
+            get_videos_count=lambda: 657,
+        )
+    )
+
+    mixes = client.execute_read("tidal_list_favorite_mixes", listing_params(3, 0))
+    assert [item.id for item in mixes.items] == ["0", "1"]
+    assert mixes.count == 2
+    assert mixes.has_more is False
+    assert mixes.next_offset is None
+
+
+def test_favorite_listings_fall_back_to_length_sentinel_without_a_usable_counter() -> None:
+    def failing_count() -> int:
+        raise RuntimeError("count unavailable")
+
+    failing = TidalClient(favorites_listing_session(2, get_albums_count=failing_count))
+    short_page = failing.execute_read("tidal_list_favorite_albums", listing_params(3, 0))
+    assert short_page.count == 2
+    assert short_page.has_more is False
+    assert short_page.next_offset is None
+
+    countless = TidalClient(favorites_listing_session(4))
+    full_page = countless.execute_read("tidal_list_favorite_albums", listing_params(3, 0))
+    assert full_page.count == 3
+    assert full_page.has_more is True
+    assert full_page.next_offset == 3
+
+
+def test_empty_counted_favorite_page_keeps_the_walk_alive() -> None:
+    client = TidalClient(favorites_listing_session(0, get_albums_count=lambda: 657))
+
+    page = client.execute_read("tidal_list_favorite_albums", listing_params(3, 12))
+    assert page.items == []
+    assert page.count == 0
+    assert page.limit == 3
+    assert page.offset == 12
+    assert page.has_more is True
+    assert page.next_offset == 15
+
+
+def test_empty_uncounted_favorite_page_keeps_the_scalar_envelope() -> None:
+    client = TidalClient(favorites_listing_session(0))
+
+    page = client.execute_read("tidal_list_favorite_mixes", listing_params(3, 0))
+    assert page.items == []
+    assert page.count == 0
+    assert page.value == []
+    assert page.limit is None
+    assert page.offset is None
+    assert page.has_more is False
+    assert page.next_offset is None
+
+
+def test_undercounting_total_cannot_end_a_favorite_walk_early() -> None:
+    client = TidalClient(favorites_listing_session(4, get_albums_count=lambda: 10))
+
+    page = client.execute_read("tidal_list_favorite_albums", listing_params(3, 9))
+    assert [item.id for item in page.items] == ["0", "1", "2"]
+    assert page.count == 3
+    assert page.has_more is True
+    assert page.next_offset == 12

@@ -9,7 +9,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
-- Favorite-track listings no longer stop after the first page when TIDAL returns a short page.
+- Favorite track, album, artist, playlist, and video listings no longer stop after the first page
+  when TIDAL returns a short page. Favorite mixes keep the previous behaviour, as `tidalapi`
+  exposes no mix counter.
+- A counted favorites page that returns no items is now emitted as a page with `has_more`, instead
+  of a bare value without pagination metadata that ended a walk early.
 
 ## [1.0.1] - 2026-09-04
 

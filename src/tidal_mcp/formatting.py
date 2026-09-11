@@ -259,12 +259,16 @@ def format_catalog_result(
     limit: int | None = None,
     offset: int | None = None,
     warnings: list[str] | None = None,
+    total: int | None = None,
 ) -> CatalogResult:
     """Build one predictable envelope for objects, lists, prose, and scalar metadata."""
-    if isinstance(value, list) and not all(
-        isinstance(item, (str, int, float, bool, list, tuple, dict)) for item in value
+    if isinstance(value, list) and (
+        total is not None
+        or not all(isinstance(item, (str, int, float, bool, list, tuple, dict)) for item in value)
     ):
-        has_more = limit is not None and len(value) > limit
+        over_fetched = limit is not None and len(value) > limit
+        counted_more = total is not None and limit is not None and (offset or 0) + limit < total
+        has_more = over_fetched or counted_more
         selected = value[:limit] if limit is not None else value
         return CatalogResult(
             operation=operation,
