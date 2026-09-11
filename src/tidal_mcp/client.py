@@ -227,9 +227,10 @@ class TidalClient:
                     order_direction="DESC",
                 )
             tracks = [format_track(item) for item in items]
+            total = self._favorites_total(favorites)
         except Exception as exc:
             self._raise_operation_error("list favorite tracks", exc)
-        return self._track_page(tracks, limit, offset)
+        return self._track_page(tracks, limit, offset, total=total)
 
     def list_playlists(self, limit: int, offset: int) -> PlaylistPage:
         try:
@@ -685,8 +686,10 @@ class TidalClient:
         )
 
     @staticmethod
-    def _track_page(tracks: list[Track], limit: int, offset: int) -> TrackPage:
-        has_more = len(tracks) > limit
+    def _track_page(
+        tracks: list[Track], limit: int, offset: int, *, total: int | None = None
+    ) -> TrackPage:
+        has_more = len(tracks) > limit if total is None else offset + limit < total
         return TrackPage(
             items=tracks[:limit],
             count=min(len(tracks), limit),
@@ -695,6 +698,14 @@ class TidalClient:
             has_more=has_more,
             next_offset=offset + limit if has_more else None,
         )
+
+    @staticmethod
+    def _favorites_total(favorites: Any) -> int | None:
+        try:
+            return int(favorites.get_tracks_count())
+        except Exception as exc:
+            LOGGER.info("TIDAL favorites count unavailable (%s)", type(exc).__name__)
+            return None
 
     @staticmethod
     def _raise_operation_error(operation: str, exc: Exception) -> NoReturn:

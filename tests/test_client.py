@@ -49,6 +49,9 @@ class FakeFavorites:
     def tracks(self, **_: object) -> list[SimpleNamespace]:
         return [api_track("1"), api_track("2"), api_track("3")]
 
+    def get_tracks_count(self) -> int:
+        return 3
+
 
 class FakeUser:
     def __init__(self, created: SimpleNamespace | None = None) -> None:
@@ -402,3 +405,47 @@ def test_extended_adapter_wraps_read_preview_and_write_failures() -> None:
         client.preview_mutation("delete_playlist", {"playlist_id": "1"})
     with pytest.raises(TidalClientError):
         client.execute_mutation("delete_playlist", {"playlist_id": "1"})
+
+
+def short_favorites_session(page_items: int, count: object = None) -> SimpleNamespace:
+    favorites = SimpleNamespace(
+        tracks=lambda **_: [api_track(str(index)) for index in range(page_items)]
+    )
+    if count is not None:
+        favorites.get_tracks_count = count
+    return SimpleNamespace(user=SimpleNamespace(favorites=favorites))
+
+
+def test_favorites_short_pages_still_report_more_from_collection_total() -> None:
+    client = TidalClient(short_favorites_session(2, lambda: 657))
+
+    first = client.list_favorite_tracks(limit=3, offset=0)
+    assert [item.id for item in first.items] == ["0", "1"]
+    assert first.count == 2
+    assert first.has_more is True
+    assert first.next_offset == 3
+
+    middle = client.list_favorite_tracks(limit=3, offset=300)
+    assert middle.has_more is True
+    assert middle.next_offset == 303
+
+    tail = client.list_favorite_tracks(limit=3, offset=654)
+    assert tail.has_more is False
+    assert tail.next_offset is None
+
+
+def test_favorites_without_usable_count_fall_back_to_length_sentinel() -> None:
+    def failing_count() -> int:
+        raise RuntimeError("count unavailable")
+
+    failing = TidalClient(short_favorites_session(2, failing_count))
+    short_page = failing.list_favorite_tracks(limit=3, offset=0)
+    assert short_page.count == 2
+    assert short_page.has_more is False
+    assert short_page.next_offset is None
+
+    countless = TidalClient(short_favorites_session(4))
+    full_page = countless.list_favorite_tracks(limit=3, offset=0)
+    assert full_page.count == 3
+    assert full_page.has_more is True
+    assert full_page.next_offset == 3

@@ -5,6 +5,12 @@ All notable changes to TIDAL MCP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Favorite-track listings no longer stop after the first page when TIDAL returns a short page.
+
 ## [1.0.1] - 2026-09-04
 
 ### Added

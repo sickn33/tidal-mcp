@@ -38,6 +38,15 @@ All list tools use explicit bounds and return pagination metadata. Objects are s
 a public-field allowlist; OAuth tokens, session objects, request clients, and internal attributes
 cannot enter tool results.
 
+`tidal_list_favorite_tracks` derives `has_more` and `next_offset` from the account's exact
+favorite-track count rather than from the length of the returned page. TIDAL's favorites endpoint
+omits unavailable items inside a requested window, so a page can be short: a request for 51 items
+at offset 0 returned 48 items for a collection of 657. Consumers should walk pages until
+`has_more` is false, accept pages containing fewer items than `limit`, and accept that the final
+page of a walk can be empty when TIDAL declines to serve every counted favorite. Catalog search,
+album tracks, and playlist items still infer `has_more` from an over-fetched page; those endpoints
+were measured and did not return short pages. The remaining favorite listings were not measured.
+
 ## Mutation surface
 
 Every mutation has a named `tidal_preview_*` tool. A preview may read public target metadata and
