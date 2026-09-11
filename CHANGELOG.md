@@ -14,6 +14,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
   exposes no mix counter.
 - A counted favorites page that returns no items is now emitted as a page with `has_more`, instead
   of a bare value without pagination metadata that ended a walk early.
+- Favorite playlist, favorite mix, playlist folder, public playlist, and combined playlist
+  listings no longer fail for any request of 50 or more items, where the pagination probe asked
+  TIDAL for 51. Those five now serve at most 50 items per page, whatever `limit` is requested.
 
 ## [1.0.1] - 2026-09-04
 

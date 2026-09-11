@@ -138,3 +138,50 @@ def test_counted_pages_stay_paginated_when_empty_or_undercounted() -> None:
     assert [item.id for item in undercounted.items] == ["0", "1", "2"]
     assert undercounted.has_more is True
     assert undercounted.next_offset == 12
+
+
+def nodes(count: int) -> list[SimpleNamespace]:
+    return [SimpleNamespace(id=str(index)) for index in range(count)]
+
+
+def test_fetched_window_decides_the_over_fetch_signal() -> None:
+    exact = format_catalog_result("list", nodes(3), limit=3, offset=0, fetched=4)
+    assert exact.count == 3
+    assert exact.has_more is False
+    assert exact.next_offset is None
+
+    over = format_catalog_result("list", nodes(4), limit=3, offset=0, fetched=4)
+    assert over.count == 3
+    assert over.has_more is True
+    assert over.next_offset == 3
+
+    capped_full = format_catalog_result("list", nodes(3), limit=3, offset=6, fetched=3)
+    assert capped_full.count == 3
+    assert capped_full.has_more is True
+    assert capped_full.next_offset == 9
+
+    capped_short = format_catalog_result("list", nodes(2), limit=3, offset=6, fetched=3)
+    assert capped_short.count == 2
+    assert capped_short.has_more is False
+    assert capped_short.next_offset is None
+
+
+def test_empty_clamped_page_stays_paginated_without_a_counter() -> None:
+    empty = format_catalog_result("list", [], limit=50, offset=100, fetched=50)
+    assert empty.items == []
+    assert empty.count == 0
+    assert empty.limit == 50
+    assert empty.offset == 100
+    assert empty.has_more is False
+    assert empty.next_offset is None
+
+
+def test_absent_fetched_window_keeps_the_length_sentinel() -> None:
+    full = format_catalog_result("list", nodes(3), limit=3, offset=0)
+    assert full.has_more is False
+    assert full.next_offset is None
+
+    spilling = format_catalog_result("list", nodes(4), limit=3, offset=0)
+    assert spilling.count == 3
+    assert spilling.has_more is True
+    assert spilling.next_offset == 3
