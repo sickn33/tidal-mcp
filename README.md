@@ -12,8 +12,8 @@
 
 **TIDAL MCP** connects Codex, Claude Desktop, Claude Code, Cursor, and other
 stdio-compatible Model Context Protocol clients to a TIDAL account. Search the catalog,
-analyze playlists, discover music, read lyrics and credits, manage favorites, organize folders,
-and safely create or edit playlists through **117 typed MCP tools**.
+analyze playlists, discover music, read lyrics, manage favorites, organize folders,
+and safely create or edit playlists through **119 typed MCP tools**.
 
 > **Positioning:** in the September 4, 2026 review, this was the most complete public TIDAL MCP
 > implementation found in a reproducible review of the current GitHub landscape. The claim is
@@ -28,7 +28,7 @@ Most TIDAL integrations expose a small selection of search and playlist commands
 built as a complete local control surface for AI agents while keeping credentials and approvals
 on your machine.
 
-- **117 discoverable tools:** 79 reads, 36 mutation previews, and 2 approval-token commits.
+- **119 discoverable tools:** 81 reads, 36 mutation previews, and 2 approval-token commits.
 - **Broad account coverage:** catalog, editorial pages, recommendations, lyrics, favorites,
   playlists, folders, mixes, images, and playback metadata.
 - **Safe writes:** mutations are off by default and always require preview → explicit approval →
@@ -60,8 +60,9 @@ See [real-world workflows and prompt examples](docs/USE_CASES.md).
 | Surface | Tools | Examples |
 | --- | ---: | --- |
 | Authentication, search, recommendations | 3 | status, multi-type search, deterministic multi-seed recommendations |
-| Catalog, editorial, discovery | 49 | tracks, albums, artists, videos, lyrics, credits, genres, Home, Explore, For You |
-| Collection, playlists, folders | 22 | favorites, counts, playlist items, owned/public playlists, folders, mixes |
+| Catalog, editorial, discovery | 54 | tracks, albums, artists, videos, lyrics, genres, Home, Explore, For You |
+| Collection, playlists, folders | 24 | favorites, counts, playlist items, full-playlist collection, summaries, owned/public playlists, folders, mixes |
+| Built-in prompts | 4 | playlist-from-description, playlist review, discovery digest, library audit |
 | Exact mutation previews | 36 | playlist CRUD, item moves, visibility, favorites, folders |
 | Approval-token commits | 2 | universal commit and compatible playlist-creation alias |
 
@@ -149,7 +150,7 @@ writes are locked to reduce duplicate effects. Destructive previews are clearly 
 ## Supported TIDAL operations
 
 - **Search and lookup:** tracks, albums, artists, playlists, videos, mixes, users, barcodes, ISRCs.
-- **Track intelligence:** details, radio, radio mixes, lyrics, credits, playback metadata, temporary
+- **Track intelligence:** details, radio, radio mixes, lyrics, playback metadata, temporary
   account-scoped URLs.
 - **Artists and albums:** discographies, EPs and singles, appearances, biographies, reviews,
   related artists, similar albums, resolutions, artwork, and editorial pages.
@@ -189,7 +190,7 @@ uv build
 
 The coverage gate is **100% for statements and branches**. Tests exercise every registered read
 and mutation route through the MCP schemas and the pinned `tidalapi` adapter without contacting
-TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 117 tool
+TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 119 tool
 schemas.
 
 Official releases are published from GitHub Actions through npm Trusted Publishing, with no

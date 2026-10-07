@@ -6,8 +6,8 @@ handwritten workflow tools in `src/tidal_mcp/server.py`.
 
 ## Coverage result
 
-- 117 MCP tools with input and output schemas.
-- 79 read-only tools.
+- 119 MCP tools with input and output schemas.
+- 81 read-only tools.
 - 36 exact local mutation-preview tools.
 - 2 approval-token commit tools.
 - 100% statement and branch test coverage, enforced by `fail_under = 100`.
@@ -31,6 +31,7 @@ handwritten workflow tools in `src/tidal_mcp/server.py`.
 | Mixes | Legacy and v2 metadata/images plus paginated mix items for both mix generations |
 | Discovery pages | Home, Explore, For You, genre hubs, hi-res, local genres, mixes, moods, videos |
 | Editorial navigation | Category items, section links, show-more/view-all expansion, and opening a page link |
+| Derived analysis | Full-playlist collection with an explicit cap, and a deterministic playlist summary (duration, top artists, decades, explicit count, duplicates) |
 | Genres | Complete genre list and paginated tracks, albums, artists, playlists, or videos by genre |
 | Folders | Folder metadata and paginated contents |
 | Recommendations | Multi-seed Track Radio, deduplication, provenance, deterministic metadata filters |
@@ -98,6 +99,12 @@ truncated one, so the last page of such a walk can come back empty. An empty pag
 never an end-of-walk signal on these surfaces either; `has_more` is the only authoritative one.
 `tidal_list_favorite_playlists` additionally carries its exact collection counter, so its cursor
 does not rely on the clamped signal alone.
+
+## Built-in prompts
+
+Four MCP prompts are registered alongside the tools. They are guidance, not capability: every one
+names read-only tools, and the prompts that reach a write stop at `tidal_preview_*` and require the
+user's approval before `tidal_commit_action`. A prompt therefore cannot bypass the approval gate.
 
 ## Mutation surface
 

@@ -24,6 +24,8 @@ EXPECTED_TOOLS = {
     "tidal_list_playlists",
     "tidal_get_playlist_tracks",
     "tidal_recommend_tracks",
+    "tidal_collect_playlist_tracks",
+    "tidal_summarize_playlist",
     *(spec.name for spec in READ_TOOL_SPECS),
     *(spec.name for spec in MUTATION_TOOL_SPECS),
     "tidal_commit_action",
@@ -413,3 +415,97 @@ def test_server_main_sets_quiet_logging_and_runs(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(server_module.mcp, "run", lambda: called.append(True))
     server_module.main()
     assert called == [True]
+
+
+def test_prompts_are_registered_and_never_commit(tmp_path: Path) -> None:
+    runtime, _ = make_runtime(tmp_path)
+
+    async def scenario() -> None:
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            listed = await client.list_prompts()
+            names = {prompt.name for prompt in listed.prompts}
+            assert names == {
+                "tidal_playlist_from_description",
+                "tidal_playlist_review",
+                "tidal_discovery_digest",
+                "tidal_library_audit",
+            }
+            assert all(prompt.description for prompt in listed.prompts)
+            for prompt in listed.prompts:
+                # MCP prompt arguments travel as strings, so any Literal argument must be
+                # filled with one of its declared members rather than a placeholder.
+                arguments = {
+                    argument.name: (
+                        "flow"
+                        if argument.name == "focus"
+                        else "20"
+                        if argument.name == "target_track_count"
+                        else "3"
+                        if argument.name == "sections"
+                        else "fixture"
+                    )
+                    for argument in prompt.arguments or []
+                }
+                rendered = await client.get_prompt(prompt.name, arguments)
+                text = "\n".join(
+                    message.content.text
+                    for message in rendered.messages
+                    if getattr(message.content, "text", None)
+                )
+                assert text.strip()
+                # A prompt must never authorize an unapproved write on its own.
+                assert (
+                    "Do not call `tidal_commit_action`" in text
+                    or "Do not modify" in text
+                    or ("Do not remove or reorder anything." in text)
+                    or ("Do not add anything to the library." in text)
+                )
+
+    asyncio.run(scenario())
+
+
+def test_collection_tools_are_exposed_through_the_mcp_contract(tmp_path: Path) -> None:
+    runtime, _ = make_runtime(tmp_path)
+
+    async def scenario() -> None:
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            collected = await client.call_tool(
+                "tidal_collect_playlist_tracks",
+                {"playlist_id": "playlist-1", "max_items": 10},
+            )
+            assert collected.is_error is False
+            assert collected.structured_content["count"] == 3
+            assert collected.structured_content["truncated"] is False
+            summary = await client.call_tool(
+                "tidal_summarize_playlist",
+                {"playlist_id": "playlist-1", "max_items": 10, "top_artists": 2},
+            )
+            assert summary.is_error is False
+            assert summary.structured_content["tracks_analyzed"] == 3
+            assert summary.structured_content["title"] == "Evening Test"
+
+    asyncio.run(scenario())
+
+
+def test_collection_tools_surface_client_failures_as_safe_tool_errors(tmp_path: Path) -> None:
+    runtime, fake = make_runtime(tmp_path)
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        raise TidalClientError("safe collection failure")
+
+    async def scenario() -> None:
+        fake.collect_playlist_tracks = fail
+        fake.summarize_playlist = fail
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            collected = await client.call_tool(
+                "tidal_collect_playlist_tracks", {"playlist_id": "playlist-1"}
+            )
+            assert collected.is_error is True
+            assert "safe collection failure" in collected.content[0].text
+            summary = await client.call_tool(
+                "tidal_summarize_playlist", {"playlist_id": "playlist-1"}
+            )
+            assert summary.is_error is True
+            assert "safe collection failure" in summary.content[0].text
+
+    asyncio.run(scenario())

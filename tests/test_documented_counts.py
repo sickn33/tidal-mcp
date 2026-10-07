@@ -1,0 +1,93 @@
+"""Fail the build when the documented tool counts drift from the code.
+
+The README, coverage contract, registry metadata, landing page, and llms files all quote a tool
+count. Those numbers had already drifted twice, so they are now derived from the executable
+inventory and asserted here instead of being trusted by hand.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from scripts.smoke_stdio import EXPECTED_TOOLS
+from tidal_mcp.catalog import MUTATION_TOOL_SPECS, READ_TOOL_SPECS
+
+ROOT = Path(__file__).resolve().parents[1]
+
+TOTAL = len(EXPECTED_TOOLS)
+REQUIRED_TOTAL = len(READ_TOOL_SPECS) + len(MUTATION_TOOL_SPECS)
+# Reads include the catalog inventory plus the handwritten read tools; the two commit aliases are
+# the only registered tools that can write, and the mutation previews are counted separately.
+READS = TOTAL - len(MUTATION_TOOL_SPECS) - 2
+
+
+def read(relative: str) -> str:
+    return (ROOT / relative).read_text(encoding="utf-8")
+
+
+def test_the_registered_surface_matches_the_declared_inventory() -> None:
+    # Ten handwritten workflow tools plus two commit aliases make up the difference.
+    assert REQUIRED_TOTAL + 10 == TOTAL
+    assert READS == 81
+    assert TOTAL == 119
+
+
+def test_every_document_quotes_the_same_counts() -> None:
+    readme = read("README.md")
+    assert f"**{TOTAL} typed MCP tools**" in readme
+    assert f"**{TOTAL} discoverable tools:** {READS} reads" in readme
+
+    coverage = read("docs/API_COVERAGE.md")
+    assert f"- {TOTAL} MCP tools with input and output schemas." in coverage
+    assert f"- {READS} read-only tools." in coverage
+
+    llms = read("llms.txt")
+    assert f"- {TOTAL} registered MCP tools with bounded input" in llms
+    assert (
+        f"- {READS} read-only tools, {len(MUTATION_TOOL_SPECS)} local mutation-preview tools"
+        in llms
+    )
+
+    registry = read("server.json")
+    assert f"{TOTAL} typed MCP tools" in registry
+
+    package = read("package.json")
+    assert f"{TOTAL} typed tools" in package
+
+    smoke = read("scripts/smoke_stdio.py")
+    assert f"len(names) != {TOTAL}" in smoke
+
+    site = read("site/index.html")
+    assert f"{TOTAL} Tools for AI Music Workflows" in site
+    assert f"{TOTAL} TIDAL MCP tools across eight capability groups" in site
+
+    site_llms = read("site/llms.txt")
+    assert f"{TOTAL} typed tools" in site_llms
+    assert f"{TOTAL} named MCP tools: {READS} reads" in site_llms
+
+
+def test_no_current_document_quotes_a_stale_count() -> None:
+    stale = ("117",)
+    for relative in (
+        "README.md",
+        "docs/API_COVERAGE.md",
+        "docs/FAQ.md",
+        "server.json",
+        "package.json",
+        "llms.txt",
+        "site/llms.txt",
+    ):
+        content = read(relative)
+        for number in stale:
+            assert number not in content, f"{relative} still quotes {number}"
+
+
+def test_the_dated_comparison_keeps_its_snapshot_number() -> None:
+    """The September 4, 2026 comparison must keep the figure that was true at that snapshot."""
+    matrix = read("docs/COMPETITIVE_MATRIX.md")
+    assert "| **TIDAL MCP 1.0** | **112** |" in matrix
+    assert "exposed **112** named tools on September 4, 2026" in matrix
+    assert f"now exposes **{TOTAL}**" in matrix
+
+    site_llms = read("site/llms.txt")
+    assert "112 tools at the reviewed snapshot" in site_llms

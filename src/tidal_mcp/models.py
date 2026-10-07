@@ -159,6 +159,58 @@ class RecommendationResponse(StrictModel):
     filters: RecommendationFilters
 
 
+class CollectedTracks(StrictModel):
+    """Every track of a playlist, resolved by walking pages until the cap or the end."""
+
+    playlist_id: str
+    items: list[Track]
+    count: int = Field(ge=0)
+    max_items: int = Field(ge=1)
+    truncated: bool = Field(
+        description=(
+            "True when the walk stopped at max_items without reaching the end of the playlist, "
+            "so items may be missing."
+        )
+    )
+    pages_fetched: int = Field(ge=0)
+
+
+class ArtistShare(StrictModel):
+    artist: str
+    track_count: int = Field(ge=0)
+
+
+class DuplicateTrack(StrictModel):
+    """One track that appears more than once, identified by title and artist."""
+
+    title: str
+    artist: str
+    occurrences: int = Field(ge=2)
+    track_ids: list[str]
+
+
+class PlaylistSummary(StrictModel):
+    """Derived read-only analysis of a playlist, computed from its resolved tracks."""
+
+    playlist_id: str
+    title: str | None = None
+    tracks_analyzed: int = Field(ge=0)
+    max_items: int = Field(ge=1)
+    truncated: bool = Field(
+        description=(
+            "True when the walk stopped at max_items without reaching the end of the playlist, "
+            "so the summary covers a prefix rather than the whole playlist."
+        )
+    )
+    total_duration_seconds: int = Field(ge=0)
+    distinct_artists: int = Field(ge=0)
+    top_artists: list[ArtistShare] = Field(default_factory=list)
+    decade_counts: dict[str, int] = Field(default_factory=dict)
+    explicit_tracks: int = Field(ge=0)
+    tracks_without_release_date: int = Field(ge=0)
+    duplicate_tracks: list[DuplicateTrack] = Field(default_factory=list)
+
+
 class CommitPlaylistResult(StrictModel):
     status: Literal["success", "partial"]
     message: str

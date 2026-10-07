@@ -24,8 +24,10 @@ from tidal_mcp.models import (
     ActionDraft,
     AuthStatus,
     CatalogResult,
+    CollectedTracks,
     MutationResult,
     PlaylistPage,
+    PlaylistSummary,
     RecommendationFilters,
     RecommendationResponse,
     SearchResponse,
@@ -33,6 +35,7 @@ from tidal_mcp.models import (
     Track,
     TrackPage,
 )
+from tidal_mcp.prompts import register_prompts
 from tidal_mcp.runtime import Runtime
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
@@ -230,6 +233,58 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         except TidalMCPError as exc:
             raise _as_tool_error(exc) from exc
 
+    @server.tool(title="Collect every track in a playlist", annotations=READ_ONLY)
+    async def tidal_collect_playlist_tracks(
+        playlist_id: Annotated[str, Field(min_length=1, max_length=100)],
+        max_items: Annotated[
+            int,
+            Field(
+                ge=1,
+                le=2000,
+                description=(
+                    "Hard cap on collected tracks. The walk stops here and reports truncated."
+                ),
+            ),
+        ] = 500,
+    ) -> CollectedTracks:
+        """Walk a playlist's pages and return the tracks, instead of paging by hand.
+
+        The walk follows the page cursor until the end of the playlist or `max_items`. A short or
+        empty page never ends the walk early. `truncated` is true when the cap was reached before
+        the end, so a capped result is never mistaken for the complete playlist.
+        """
+        try:
+            return await asyncio.to_thread(
+                active_runtime.client().collect_playlist_tracks,
+                playlist_id,
+                max_items,
+            )
+        except TidalMCPError as exc:
+            raise _as_tool_error(exc) from exc
+
+    @server.tool(title="Summarize a TIDAL playlist", annotations=READ_ONLY)
+    async def tidal_summarize_playlist(
+        playlist_id: Annotated[str, Field(min_length=1, max_length=100)],
+        max_items: Annotated[int, Field(ge=1, le=2000)] = 500,
+        top_artists: Annotated[int, Field(ge=1, le=25)] = 5,
+    ) -> PlaylistSummary:
+        """Derive a summary of a playlist: duration, top artists, decades, duplicates.
+
+        Every field is computed from metadata the read tools already return. Release-date decades
+        count only tracks that carry a parseable year, and `tracks_without_release_date` reports the
+        rest instead of silently folding them into a bucket. Duplicates are keyed on the normalized
+        title and artist pair, because TIDAL serves distinct track ids for the same recording.
+        """
+        try:
+            return await asyncio.to_thread(
+                active_runtime.client().summarize_playlist,
+                playlist_id,
+                max_items,
+                top_artists,
+            )
+        except TidalMCPError as exc:
+            raise _as_tool_error(exc) from exc
+
     @server.tool(title="Recommend TIDAL tracks", annotations=READ_ONLY)
     async def tidal_recommend_tracks(
         seed_track_ids: Annotated[
@@ -359,6 +414,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
             annotations=LOCAL_PREVIEW,
         )(_make_preview_handler(active_runtime, spec))
 
+    register_prompts(server, active_runtime)
     return server
 
 
