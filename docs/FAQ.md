@@ -14,7 +14,7 @@ by, or sponsored by TIDAL. TIDAL is a trademark of its respective owner.
 ## Is this the most complete TIDAL MCP server?
 
 It is the broadest public implementation found in the dated September 4, 2026 comparison. TIDAL
-MCP now exposes 119 registered tools; the next-largest reviewed public implementation exposes 78.
+MCP now exposes 121 registered tools; the next-largest reviewed public implementation exposes 78.
 Tool count is not the only measure of quality, so the comparison also records schemas, mutation
 safety, tests, transports, and notable scope. Read the evidence and limitations in
 [COMPETITIVE_MATRIX.md](COMPETITIVE_MATRIX.md).
@@ -74,7 +74,7 @@ the upstream adapter.
 No. UPnP, DLNA, and device-network control are outside the current security boundary. They could
 be implemented as a separate optional component, but they are not counted as TIDAL API coverage.
 
-## Why are there 119 tools instead of one raw API tool?
+## Why are there 121 tools instead of one raw API tool?
 
 Individual allowlisted tools are easier for an AI client to discover, validate, audit, and annotate
 correctly. An unrestricted raw endpoint would bypass input schemas, public-field serialization,

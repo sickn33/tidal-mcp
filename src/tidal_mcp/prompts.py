@@ -85,6 +85,9 @@ def register_prompts(server: MCPServer, runtime: object) -> None:
                         "actual order.",
                         "3. Report the numbers you measured, then give a short critique and "
                         "concrete edits. Name exact track ids when you propose a change.",
+                        "4. If the user wants the current version on disk, offer "
+                        "`tidal_export_playlist`; it writes only inside the private export "
+                        "directory and never overwrites an existing file.",
                         "",
                         "Describe anything you did not measure as unknown rather than implying it. "
                         "Do not modify the playlist unless the user asks; if they do, go through "
@@ -148,7 +151,9 @@ def register_prompts(server: MCPServer, runtime: object) -> None:
                         "played, playlist folders that look abandoned, overlaps between your saved "
                         "playlists.",
                         "",
-                        "Report only what the tools return. Do not remove or reorder anything.",
+                        "Report only what the tools return. Do not remove or reorder anything. "
+                        "`tidal_compare_playlists` is useful for spotting overlap between two "
+                        "saved playlists.",
                     ]
                 )
             )

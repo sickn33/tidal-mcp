@@ -16,8 +16,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 TOTAL = len(EXPECTED_TOOLS)
 REQUIRED_TOTAL = len(READ_TOOL_SPECS) + len(MUTATION_TOOL_SPECS)
-# Reads include the catalog inventory plus the handwritten read tools; the two commit aliases are
-# the only registered tools that can write, and the mutation previews are counted separately.
+# Handwritten registrations: auth, search, favorite tracks, playlists, playlist tracks, collection,
+# summary, comparison, recommendation, export, and the two commit tools.
+HANDWRITTEN = 12
+# The catalog inventory plus the handwritten read tools. The two commit aliases are the only
+# registered tools that can write, and the mutation previews are counted separately.
 READS = TOTAL - len(MUTATION_TOOL_SPECS) - 2
 
 
@@ -26,10 +29,20 @@ def read(relative: str) -> str:
 
 
 def test_the_registered_surface_matches_the_declared_inventory() -> None:
-    # Ten handwritten workflow tools plus two commit aliases make up the difference.
-    assert REQUIRED_TOTAL + 10 == TOTAL
-    assert READS == 81
-    assert TOTAL == 119
+    assert REQUIRED_TOTAL + HANDWRITTEN == TOTAL
+    assert READS == 83
+    assert TOTAL == 121
+
+
+def test_both_expected_tool_sets_agree() -> None:
+    """The smoke test keeps its own list; it must not fall behind the contract.
+
+    A stale list here would make the packaged smoke check pass while silently ignoring a newly
+    registered tool, which is exactly how the counts drifted before.
+    """
+    from tests.test_server import EXPECTED_TOOLS as SERVER_EXPECTED
+
+    assert EXPECTED_TOOLS == SERVER_EXPECTED
 
 
 def test_every_document_quotes_the_same_counts() -> None:

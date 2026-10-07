@@ -21,6 +21,8 @@ EXPECTED_TOOLS = {
     "tidal_recommend_tracks",
     "tidal_collect_playlist_tracks",
     "tidal_summarize_playlist",
+    "tidal_compare_playlists",
+    "tidal_export_playlist",
     *(spec.name for spec in READ_TOOL_SPECS),
     *(spec.name for spec in MUTATION_TOOL_SPECS),
     "tidal_commit_action",
@@ -41,7 +43,7 @@ async def smoke() -> None:
         async with Client(parameters, raise_exceptions=True) as client:
             listed = await client.list_tools()
             names = {tool.name for tool in listed.tools}
-            if names != EXPECTED_TOOLS or len(names) != 119:
+            if names != EXPECTED_TOOLS or len(names) != 121:
                 raise RuntimeError(f"Unexpected tool set: {sorted(names)}")
             auth = await client.call_tool("tidal_auth_status", {})
             if auth.is_error or auth.structured_content is None:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -19,12 +19,15 @@ from tidal_mcp.catalog import (
     ReadToolSpec,
 )
 from tidal_mcp.exceptions import DraftError, TidalMCPError
+from tidal_mcp.exports import write_export
 from tidal_mcp.filtering import filter_recommendations
 from tidal_mcp.models import (
     ActionDraft,
     AuthStatus,
     CatalogResult,
     CollectedTracks,
+    CollectionComparison,
+    ExportResult,
     MutationResult,
     PlaylistPage,
     PlaylistSummary,
@@ -40,6 +43,12 @@ from tidal_mcp.runtime import Runtime
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 LOCAL_PREVIEW = ToolAnnotations(
+    read_only_hint=False,
+    destructive_hint=False,
+    idempotent_hint=False,
+    open_world_hint=True,
+)
+LOCAL_EXPORT = ToolAnnotations(
     read_only_hint=False,
     destructive_hint=False,
     idempotent_hint=False,
@@ -281,6 +290,81 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
                 playlist_id,
                 max_items,
                 top_artists,
+            )
+        except TidalMCPError as exc:
+            raise _as_tool_error(exc) from exc
+
+    @server.tool(title="Compare two TIDAL playlists", annotations=READ_ONLY)
+    async def tidal_compare_playlists(
+        left_playlist_id: Annotated[str, Field(min_length=1, max_length=100)],
+        right_playlist_id: Annotated[str, Field(min_length=1, max_length=100)],
+        max_items: Annotated[int, Field(ge=1, le=2000)] = 500,
+    ) -> CollectionComparison:
+        """Report the shared, left-only, and right-only tracks of two playlists.
+
+        Tracks are matched on the normalized title and artist pair, not on track id, because TIDAL
+        serves distinct ids for the same recording across releases. Counts are over distinct
+        matches, so a duplicated track in one playlist does not inflate the result.
+        """
+        try:
+            return await asyncio.to_thread(
+                active_runtime.client().compare_playlists,
+                left_playlist_id,
+                right_playlist_id,
+                max_items,
+            )
+        except TidalMCPError as exc:
+            raise _as_tool_error(exc) from exc
+
+    @server.tool(title="Export a TIDAL playlist to a local file", annotations=LOCAL_EXPORT)
+    async def tidal_export_playlist(
+        playlist_id: Annotated[str, Field(min_length=1, max_length=100)],
+        format: Annotated[
+            Literal["json", "m3u"],
+            Field(description="json keeps full metadata; m3u lists titles and TIDAL URLs."),
+        ] = "json",
+        max_items: Annotated[int, Field(ge=1, le=2000)] = 500,
+        name: Annotated[
+            str | None,
+            Field(
+                default=None,
+                max_length=120,
+                description=(
+                    "Optional file name without directories. Unsafe characters are replaced."
+                ),
+            ),
+        ] = None,
+    ) -> ExportResult:
+        """Write a playlist to a file inside the private export directory.
+
+        This is the only tool that writes to local disk. It never overwrites an existing file, it
+        sanitizes the requested name to a single path segment inside the export directory, and it
+        writes through a temporary file so a reader never sees a partial export. The export
+        contains public metadata and TIDAL URLs only; no media is downloaded.
+        """
+        collected = await asyncio.to_thread(
+            active_runtime.client().collect_playlist_tracks,
+            playlist_id,
+            max_items,
+        )
+        title = None
+        try:
+            title = await asyncio.to_thread(
+                active_runtime.client().playlist_title,
+                playlist_id,
+            )
+        except TidalMCPError:
+            title = None
+        try:
+            return await asyncio.to_thread(
+                write_export,
+                export_dir=active_runtime.settings.resolved_export_dir,
+                playlist_id=playlist_id,
+                title=title,
+                tracks=collected.items,
+                export_format=format,
+                name=name,
+                truncated=collected.truncated,
             )
         except TidalMCPError as exc:
             raise _as_tool_error(exc) from exc

@@ -19,6 +19,8 @@ from tidal_mcp.exceptions import (
     TidalMCPError,
 )
 from tidal_mcp.formatting import (
+    _text,
+    _value,
     format_album,
     format_artist,
     format_catalog_result,
@@ -31,7 +33,9 @@ from tidal_mcp.models import (
     AuthStatus,
     CatalogResult,
     CollectedTracks,
+    CollectionComparison,
     CommitPlaylistResult,
+    ComparisonEntry,
     DuplicateTrack,
     MutationResult,
     PlaylistPage,
@@ -367,6 +371,89 @@ class TidalClient:
         except Exception as exc:
             LOGGER.info("Playlist track count unavailable (%s)", type(exc).__name__)
             return None
+
+    @staticmethod
+    def _comparison_key(track: Track) -> tuple[str, str]:
+        return (track.title.strip().casefold(), track.artist.strip().casefold())
+
+    def playlist_title(self, playlist_id: str) -> str | None:
+        """Return a playlist's real title, or None when TIDAL does not provide one.
+
+        The formatter substitutes a placeholder for a nameless playlist. That placeholder is fine
+        for display but not for naming an exported file, so this reads the underlying field and
+        reports None instead of inventing a name.
+        """
+        try:
+            item = self.session.playlist(playlist_id)
+            name = _text(_value(item, "name")) or _text(_value(item, "title"))
+            return name or None
+        except Exception as exc:
+            LOGGER.info("Playlist title unavailable (%s)", type(exc).__name__)
+            return None
+
+    def compare_playlists(
+        self,
+        left_playlist_id: str,
+        right_playlist_id: str,
+        max_items: int,
+    ) -> CollectionComparison:
+        """Compare two playlists as sets, keyed on the normalized title and artist pair.
+
+        A track id is not a stable identity across releases: TIDAL serves distinct ids for the same
+        recording, so comparing ids would report a shared song as two different ones. `shared`
+        therefore names both ids, and the counts are over distinct keys rather than raw rows so a
+        duplicated track in one playlist does not inflate the result.
+        """
+        left = self.collect_playlist_tracks(left_playlist_id, max_items=max_items)
+        right = self.collect_playlist_tracks(right_playlist_id, max_items=max_items)
+
+        def index(tracks: list[Track]) -> dict[tuple[str, str], list[str]]:
+            grouped: dict[tuple[str, str], list[str]] = {}
+            for track in tracks:
+                grouped.setdefault(self._comparison_key(track), []).append(track.id)
+            return grouped
+
+        left_index = index(left.items)
+        right_index = index(right.items)
+
+        def entry(
+            key: tuple[str, str], left_ids: list[str], right_ids: list[str]
+        ) -> ComparisonEntry:
+            sample = left_ids + right_ids
+            source = next(
+                (track for track in [*left.items, *right.items] if track.id == sample[0]),
+                None,
+            )
+            return ComparisonEntry(
+                title=source.title if source is not None else key[0],
+                artist=source.artist if source is not None else key[1],
+                left_track_ids=left_ids,
+                right_track_ids=right_ids,
+            )
+
+        shared_keys = [key for key in left_index if key in right_index]
+        left_only_keys = [key for key in left_index if key not in right_index]
+        right_only_keys = [key for key in right_index if key not in left_index]
+        shared_keys.sort()
+        left_only_keys.sort()
+        right_only_keys.sort()
+
+        return CollectionComparison(
+            left_playlist_id=left_playlist_id,
+            right_playlist_id=right_playlist_id,
+            left_title=self.playlist_title(left_playlist_id),
+            right_title=self.playlist_title(right_playlist_id),
+            left_track_count=left.count,
+            right_track_count=right.count,
+            max_items=max_items,
+            truncated=left.truncated or right.truncated,
+            shared_count=len(shared_keys),
+            left_only_count=len(left_only_keys),
+            right_only_count=len(right_only_keys),
+            shared=[entry(k, left_index[k], right_index[k]) for k in shared_keys],
+            left_only=[entry(k, left_index[k], []) for k in left_only_keys],
+            right_only=[entry(k, [], right_index[k]) for k in right_only_keys],
+        )
 
     def summarize_playlist(
         self,

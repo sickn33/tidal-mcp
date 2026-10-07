@@ -211,6 +211,56 @@ class PlaylistSummary(StrictModel):
     duplicate_tracks: list[DuplicateTrack] = Field(default_factory=list)
 
 
+class ExportResult(StrictModel):
+    """A playlist written to a local file inside the private export directory."""
+
+    playlist_id: str
+    title: str | None = None
+    format: Literal["json", "m3u"]
+    path: str = Field(description="Absolute path of the written file.")
+    track_count: int = Field(ge=0)
+    bytes_written: int = Field(ge=0)
+    truncated: bool = Field(
+        description=(
+            "True when the collection stopped at max_items before the end of the playlist, so the "
+            "file holds a prefix rather than the whole playlist."
+        )
+    )
+
+
+class ComparisonEntry(StrictModel):
+    """One track in a comparison, with the ids it carries in each side."""
+
+    title: str
+    artist: str
+    left_track_ids: list[str] = Field(default_factory=list)
+    right_track_ids: list[str] = Field(default_factory=list)
+
+
+class CollectionComparison(StrictModel):
+    """Set comparison of two playlists, keyed on the normalized title and artist pair."""
+
+    left_playlist_id: str
+    right_playlist_id: str
+    left_title: str | None = None
+    right_title: str | None = None
+    left_track_count: int = Field(ge=0)
+    right_track_count: int = Field(ge=0)
+    max_items: int = Field(ge=1)
+    truncated: bool = Field(
+        description=(
+            "True when either side stopped at max_items before the end, so the comparison covers "
+            "a prefix of at least one playlist."
+        )
+    )
+    shared_count: int = Field(ge=0)
+    left_only_count: int = Field(ge=0)
+    right_only_count: int = Field(ge=0)
+    shared: list[ComparisonEntry] = Field(default_factory=list)
+    left_only: list[ComparisonEntry] = Field(default_factory=list)
+    right_only: list[ComparisonEntry] = Field(default_factory=list)
+
+
 class CommitPlaylistResult(StrictModel):
     status: Literal["success", "partial"]
     message: str

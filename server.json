@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.sickn33/tidal-mcp",
   "title": "TIDAL MCP",
-  "description": "Search, analyze, organize, and safely modify TIDAL through 119 typed MCP tools.",
+  "description": "Search, analyze, organize, and safely modify TIDAL through 121 typed MCP tools.",
   "repository": {
     "url": "https://github.com/sickn33/tidal-mcp",
     "source": "github"
@@ -29,12 +29,19 @@
         {
           "description": "Set to 1 to allow approval-gated TIDAL account mutations.",
           "default": "0",
-          "choices": ["0", "1"],
+          "choices": [
+            "0",
+            "1"
+          ],
           "name": "TIDAL_MCP_ENABLE_WRITES"
         },
         {
           "description": "Optional private directory for the OAuth session and approval drafts.",
           "name": "TIDAL_MCP_DATA_DIR"
+        },
+        {
+          "description": "Optional private directory where playlist exports are written.",
+          "name": "TIDAL_MCP_EXPORT_DIR"
         }
       ]
     }

@@ -21,6 +21,10 @@ class DraftError(TidalMCPError):
     """Raised for invalid, expired, or already-used approval drafts."""
 
 
+class ExportError(TidalMCPError):
+    """Raised when a local playlist export cannot be written safely."""
+
+
 class PartialPlaylistCreationError(TidalClientError):
     """Raised when a playlist exists but adding its tracks failed."""
 
