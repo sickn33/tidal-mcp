@@ -190,6 +190,9 @@ class FakeMusicClient:
             duplicate_tracks=[],
         )
 
+    def collect_playlist_for_export(self, playlist_id: str, max_items: int):
+        return "Fixture Playlist", self.collect_playlist_tracks(playlist_id, max_items)
+
     def compare_playlists(
         self, left_playlist_id: str, right_playlist_id: str, max_items: int
     ) -> CollectionComparison:

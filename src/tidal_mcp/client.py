@@ -292,14 +292,26 @@ class TidalClient:
 
     def get_playlist_tracks(self, playlist_id: str, limit: int, offset: int) -> TrackPage:
         try:
-            playlist = self.session.playlist(playlist_id)
-            try:
-                items = playlist.tracks(limit=limit + 1, offset=offset)
-            except AttributeError:
-                items = playlist.items(limit=limit + 1, offset=offset)
-            tracks = [format_track(item) for item in items]
+            playlist = self._resolve_playlist(playlist_id)
+            return self._playlist_page(playlist, limit, offset)
         except Exception as exc:
             self._raise_operation_error("read that playlist", exc)
+
+    def _resolve_playlist(self, playlist_id: str) -> Any:
+        """Fetch one playlist object.
+
+        Resolving a playlist costs a metadata request, so a single tool call resolves it once and
+        reuses the object for the track count, every page, and the title instead of refetching the
+        same metadata for each of them.
+        """
+        return self.session.playlist(playlist_id)
+
+    def _playlist_page(self, playlist: Any, limit: int, offset: int) -> TrackPage:
+        try:
+            items = playlist.tracks(limit=limit + 1, offset=offset)
+        except AttributeError:
+            items = playlist.items(limit=limit + 1, offset=offset)
+        tracks = [format_track(item) for item in items]
         return self._track_page(tracks, limit, offset)
 
     def collect_playlist_tracks(
@@ -316,24 +328,41 @@ class TidalClient:
         is available, stops only once the window passes that count. The cap is explicit:
         `truncated` reports whether the walk stopped at the cap without reaching the end, so a
         consumer can never mistake a capped result for a complete playlist.
+
+        The playlist is resolved once and reused for the count and every page. Resolving it per
+        page re-fetches the same metadata request for no benefit, which measurably multiplies the
+        network cost of a long walk.
         """
+        try:
+            playlist = self._resolve_playlist(playlist_id)
+        except TidalMCPError:
+            raise
+        except Exception as exc:
+            self._raise_operation_error("read that playlist", exc)
+        return self._collect_playlist(playlist_id, max_items, page_size, playlist=playlist)
+
+    def _collect_playlist(
+        self,
+        playlist_id: str,
+        max_items: int,
+        page_size: int,
+        *,
+        playlist: Any,
+    ) -> CollectedTracks:
+        """Collect pages from an already-resolved playlist object."""
         items: list[Track] = []
         offset = 0
         pages = 0
         truncated = False
-        total = self._playlist_track_count(playlist_id)
         try:
+            total = self._count_from_playlist(playlist)
             while True:
                 window = min(page_size, max_items - len(items))
                 if total is not None:
                     window = min(window, total - offset)
                 if window <= 0:
                     break
-                page = self.get_playlist_tracks(
-                    playlist_id,
-                    limit=window,
-                    offset=offset,
-                )
+                page = self._playlist_page(playlist, window, offset)
                 pages += 1
                 items.extend(page.items)
                 advanced = page.next_offset if page.next_offset is not None else offset + window
@@ -364,13 +393,28 @@ class TidalClient:
             pages_fetched=pages,
         )
 
-    def _playlist_track_count(self, playlist_id: str) -> int | None:
-        """Return the playlist's exact track count, or None when TIDAL does not provide it."""
+    @staticmethod
+    def _count_from_playlist(playlist: Any) -> int | None:
+        """Return a resolved playlist's exact track count, or None when unavailable."""
         try:
-            return int(self.session.playlist(playlist_id).get_tracks_count())
+            return int(playlist.get_tracks_count())
         except Exception as exc:
             LOGGER.info("Playlist track count unavailable (%s)", type(exc).__name__)
             return None
+
+    def _playlist_track_count(self, playlist_id: str) -> int | None:
+        """Return the playlist's exact track count, or None when TIDAL does not provide it."""
+        try:
+            return self._count_from_playlist(self._resolve_playlist(playlist_id))
+        except Exception as exc:
+            LOGGER.info("Playlist track count unavailable (%s)", type(exc).__name__)
+            return None
+
+    @staticmethod
+    def _title_from_playlist(playlist: Any) -> str | None:
+        """Return a resolved playlist's real title, or None when it has none."""
+        name = _text(_value(playlist, "name")) or _text(_value(playlist, "title"))
+        return name or None
 
     @staticmethod
     def _comparison_key(track: Track) -> tuple[str, str]:
@@ -384,12 +428,29 @@ class TidalClient:
         reports None instead of inventing a name.
         """
         try:
-            item = self.session.playlist(playlist_id)
-            name = _text(_value(item, "name")) or _text(_value(item, "title"))
-            return name or None
+            return self._title_from_playlist(self._resolve_playlist(playlist_id))
         except Exception as exc:
             LOGGER.info("Playlist title unavailable (%s)", type(exc).__name__)
             return None
+
+    def collect_playlist_for_export(
+        self,
+        playlist_id: str,
+        max_items: int,
+    ) -> tuple[str | None, CollectedTracks]:
+        """Resolve a playlist once and return its title together with its collected tracks.
+
+        An export needs both, and resolving the playlist separately for each would double the
+        metadata requests for no benefit.
+        """
+        try:
+            playlist = self._resolve_playlist(playlist_id)
+            collected = self._collect_playlist(playlist_id, max_items, 50, playlist=playlist)
+        except TidalMCPError:
+            raise
+        except Exception as exc:
+            self._raise_operation_error("read that playlist", exc)
+        return self._title_from_playlist(playlist), collected
 
     def compare_playlists(
         self,
@@ -404,8 +465,17 @@ class TidalClient:
         therefore names both ids, and the counts are over distinct keys rather than raw rows so a
         duplicated track in one playlist does not inflate the result.
         """
-        left = self.collect_playlist_tracks(left_playlist_id, max_items=max_items)
-        right = self.collect_playlist_tracks(right_playlist_id, max_items=max_items)
+        try:
+            left_playlist = self._resolve_playlist(left_playlist_id)
+            right_playlist = self._resolve_playlist(right_playlist_id)
+            left = self._collect_playlist(left_playlist_id, max_items, 50, playlist=left_playlist)
+            right = self._collect_playlist(
+                right_playlist_id, max_items, 50, playlist=right_playlist
+            )
+        except TidalMCPError:
+            raise
+        except Exception as exc:
+            self._raise_operation_error("compare those playlists", exc)
 
         def index(tracks: list[Track]) -> dict[tuple[str, str], list[str]]:
             grouped: dict[tuple[str, str], list[str]] = {}
@@ -441,8 +511,8 @@ class TidalClient:
         return CollectionComparison(
             left_playlist_id=left_playlist_id,
             right_playlist_id=right_playlist_id,
-            left_title=self.playlist_title(left_playlist_id),
-            right_title=self.playlist_title(right_playlist_id),
+            left_title=self._title_from_playlist(left_playlist),
+            right_title=self._title_from_playlist(right_playlist),
             left_track_count=left.count,
             right_track_count=right.count,
             max_items=max_items,
@@ -466,13 +536,18 @@ class TidalClient:
         Every number comes from fields the read tools already expose, so the analysis adds no new
         upstream surface. Duplicates are keyed on the normalized title and artist pair, because
         TIDAL serves distinct track ids for the same recording across releases.
+
+        The playlist is resolved once and its title read from that same object, so the summary does
+        not pay a second metadata request just to label its own output.
         """
-        collected = self.collect_playlist_tracks(playlist_id, max_items=max_items)
-        title: str | None = None
         try:
-            title = format_playlist(self.session.playlist(playlist_id)).title
+            playlist = self._resolve_playlist(playlist_id)
+            collected = self._collect_playlist(playlist_id, max_items, 50, playlist=playlist)
+        except TidalMCPError:
+            raise
         except Exception as exc:
-            LOGGER.info("Playlist title unavailable for the summary (%s)", type(exc).__name__)
+            self._raise_operation_error("summarize that playlist", exc)
+        title = self._title_from_playlist(playlist)
 
         artist_counts: Counter[str] = Counter()
         decade_counts: Counter[str] = Counter()

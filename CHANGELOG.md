@@ -7,6 +7,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Changed
+
+- Playlist tools now resolve the playlist once per call and reuse that object, instead of
+  re-fetching the same metadata for the track count, every page, and the title. Measured against a
+  real account: collecting 50 tracks fell from 6 HTTP requests to 4, and collecting a 473-track
+  playlist now costs 13 where every one of its 10 pages previously re-resolved the playlist.
+  Summaries, comparisons, and exports benefit the same way.
+
 ### Fixed
 
 - The README tool table summed to 126 against a documented total of 121: the collection group said

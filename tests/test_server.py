@@ -573,12 +573,13 @@ def test_compare_and_export_surface_failures_as_safe_tool_errors(tmp_path: Path)
 
 def test_export_falls_back_when_the_title_is_unavailable(tmp_path: Path) -> None:
     runtime, fake = make_runtime(tmp_path)
+    collected = fake.collect_playlist_tracks("playlist-1", 10)
 
-    def fail(*_args: object, **_kwargs: object) -> None:
-        raise TidalClientError("title unavailable")
+    def no_title(*_args: object, **_kwargs: object):
+        return None, collected
 
     async def scenario() -> None:
-        fake.playlist_title = fail
+        fake.collect_playlist_for_export = no_title
         async with Client(create_server(runtime), raise_exceptions=True) as client:
             exported = await client.call_tool(
                 "tidal_export_playlist", {"playlist_id": "playlist-1", "format": "json"}
@@ -586,5 +587,21 @@ def test_export_falls_back_when_the_title_is_unavailable(tmp_path: Path) -> None
             assert exported.is_error is False
             assert Path(exported.structured_content["path"]).name == "tidal-playlist.json"
             assert exported.structured_content["title"] is None
+
+    asyncio.run(scenario())
+
+
+def test_export_reports_a_collection_failure_as_a_safe_tool_error(tmp_path: Path) -> None:
+    runtime, fake = make_runtime(tmp_path)
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        raise TidalClientError("safe export failure")
+
+    async def scenario() -> None:
+        fake.collect_playlist_for_export = fail
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            result = await client.call_tool("tidal_export_playlist", {"playlist_id": "playlist-1"})
+            assert result.is_error is True
+            assert "safe export failure" in result.content[0].text
 
     asyncio.run(scenario())

@@ -342,19 +342,14 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         writes through a temporary file so a reader never sees a partial export. The export
         contains public metadata and TIDAL URLs only; no media is downloaded.
         """
-        collected = await asyncio.to_thread(
-            active_runtime.client().collect_playlist_tracks,
-            playlist_id,
-            max_items,
-        )
-        title = None
         try:
-            title = await asyncio.to_thread(
-                active_runtime.client().playlist_title,
+            title, collected = await asyncio.to_thread(
+                active_runtime.client().collect_playlist_for_export,
                 playlist_id,
+                max_items,
             )
-        except TidalMCPError:
-            title = None
+        except TidalMCPError as exc:
+            raise _as_tool_error(exc) from exc
         try:
             return await asyncio.to_thread(
                 write_export,
