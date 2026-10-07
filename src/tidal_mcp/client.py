@@ -474,6 +474,14 @@ class TidalClient:
         `api_path`. The version-1 `show_more()` helper and the version-2 `view_all()` helper both
         reach the same endpoint, but `view_all()` on `tidalapi 0.8.11` calls a `Session.view_all`
         method that does not exist, so the endpoint is loaded directly for both generations.
+
+        Two upstream quirks are handled here, both measured against a live account. Personalized
+        Home categories advertise paths under `home/pages/...`, but that prefix is a client-side
+        navigation artifact and the API only answers the same section at `pages/...`; using the
+        advertised path returns 404 for every Home section. A section whose expansion has no items
+        answers with an empty `rows` list, which `tidalapi`'s page parser does not accept because
+        it reads `items` instead, so an empty expansion is reported as a clear local message rather
+        than an upstream failure.
         """
         category = self._page_category(params)
         more = getattr(category, "_more", None)
@@ -483,7 +491,15 @@ class TidalClient:
                 f"Category {params['category_index']} on page {params['page']!r} has no "
                 "further items."
             )
-        return self.session.page.get(api_path)
+        if api_path.startswith("home/pages/"):
+            api_path = api_path[len("home/") :]
+        try:
+            return self.session.page.get(api_path)
+        except KeyError as exc:
+            raise TidalClientError(
+                f"Category {params['category_index']} on page {params['page']!r} has no "
+                "expandable items right now."
+            ) from exc
 
     def _mix_v2_items(self, params: dict[str, Any]) -> list[Any]:
         """Page through the tracks and videos of one current-generation mix.

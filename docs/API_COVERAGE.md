@@ -50,6 +50,16 @@ method that does not exist, so the endpoint is loaded directly for both. Paginat
 category before any wrapper is resolved, so a request never dereferences more items than it asked
 for.
 
+Two upstream quirks were measured against a live account and are handled locally. Personalized
+Home categories advertise follow-up paths under `home/pages/...`, but that prefix is a client-side
+navigation artifact: the API answers the same section only at `pages/...`, and the advertised
+path returns 404 for every Home section, so the prefix is stripped before the request. A section
+whose expansion currently has no items answers with an empty `rows` list, which `tidalapi`'s page
+parser rejects because it reads `items` instead; that case is reported as a clear "no expandable
+items right now" message rather than a generic upstream failure. `tidal_show_more_page_category`
+is therefore empty-capable by design, and callers should treat "no expandable items" as a normal
+outcome for a personalized section.
+
 All list tools use explicit bounds and return pagination metadata. Objects are serialized through
 a public-field allowlist; OAuth tokens, session objects, request clients, and internal attributes
 cannot enter tool results.

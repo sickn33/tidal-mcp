@@ -5,6 +5,22 @@ All notable changes to TIDAL MCP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `tidal_show_more_page_category` now expands personalized Home sections. Those categories
+  advertise their follow-up path under `home/pages/...`, but the API answers the section only at
+  `pages/...`, so the advertised path returned 404 for every Home category. A section with no
+  items today is now reported as "no expandable items right now" instead of a generic upstream
+  failure, because `tidalapi`'s page parser rejects the empty `rows` response TIDAL returns. Both
+  behaviors were measured against a live account.
+
+### Changed
+
+- The authenticated read-only smoke test now also covers editorial page navigation, v2 mix items,
+  video search, and the track ISRC field.
+
 ## [1.1.0] - 2026-10-07
 
 ### Added
