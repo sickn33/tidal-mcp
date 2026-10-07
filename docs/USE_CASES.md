@@ -35,6 +35,16 @@ subdirectory of your data directory and can be moved with `TIDAL_MCP_EXPORT_DIR`
 overwrite an existing file, so ask for a different name rather than clearing anything. The M3U
 lists titles and TIDAL URLs; no audio is downloaded.
 
+## Keep a derived analysis
+
+> Save the summary of “Road Trip” so I can compare it with next month's version, and save the
+> overlap between “Road Trip” and “Late Night” as well.
+
+`tidal_export_analysis` writes either a summary or a comparison as JSON, using the same read tools
+that produce the numbers and the same private, non-overwriting file writer as a playlist export.
+Derived results are JSON-only because they are structured analysis rather than a track list; ask
+for a different name rather than clearing an existing file.
+
 ## Build constrained recommendations
 
 > Use three representative tracks from my playlist as seeds. Find 25 recommendations, exclude

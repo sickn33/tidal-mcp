@@ -228,6 +228,15 @@ class ExportResult(StrictModel):
     )
 
 
+class DerivedExportResult(StrictModel):
+    """A summary or comparison written as JSON inside the private export directory."""
+
+    kind: Literal["summary", "comparison"]
+    format: Literal["json"] = "json"
+    path: str = Field(description="Absolute path of the written file.")
+    bytes_written: int = Field(ge=0)
+
+
 class ComparisonEntry(StrictModel):
     """One track in a comparison, with the ids it carries in each side."""
 

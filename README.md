@@ -13,7 +13,7 @@
 **TIDAL MCP** connects Codex, Claude Desktop, Claude Code, Cursor, and other
 stdio-compatible Model Context Protocol clients to a TIDAL account. Search the catalog,
 analyze playlists, discover music, read lyrics, manage favorites, organize folders,
-and safely create or edit playlists through **121 typed MCP tools**.
+and safely create or edit playlists through **122 typed MCP tools**.
 
 > **Positioning:** in the September 4, 2026 review, this was the most complete public TIDAL MCP
 > implementation found in a reproducible review of the current GitHub landscape. The claim is
@@ -28,7 +28,7 @@ Most TIDAL integrations expose a small selection of search and playlist commands
 built as a complete local control surface for AI agents while keeping credentials and approvals
 on your machine.
 
-- **121 discoverable tools:** 83 reads, 36 mutation previews, and 2 approval-token commits.
+- **122 discoverable tools:** 84 reads, 36 mutation previews, and 2 approval-token commits.
 - **Broad account coverage:** catalog, editorial pages, recommendations, lyrics, favorites,
   playlists, folders, mixes, images, and playback metadata.
 - **Safe writes:** mutations are off by default and always require preview → explicit approval →
@@ -63,11 +63,11 @@ See [real-world workflows and prompt examples](docs/USE_CASES.md).
 | Catalog, editorial, discovery | 54 | tracks, albums, artists, videos, lyrics, genres, Home, Explore, For You |
 | Collection, playlists, folders | 22 | favorites, counts, playlist items, owned/public playlists, folders, mixes |
 | Derived analysis | 3 | full-playlist collection, playlist summary, playlist comparison |
-| Local export | 1 | playlist to JSON or M3U in the private export directory |
+| Local export | 2 | playlist to JSON or M3U, and summaries or comparisons to JSON |
 | Exact mutation previews | 36 | playlist CRUD, item moves, visibility, favorites, folders |
 | Approval-token commits | 2 | universal commit and compatible playlist-creation alias |
 
-The table sums to the **121** registered tools. Four MCP prompts are registered alongside them
+The table sums to the **122** registered tools. Four MCP prompts are registered alongside them
 (playlist-from-description, playlist review, discovery digest, library audit); prompts are guidance
 over the tools, so they are not counted as tools.
 
@@ -196,7 +196,7 @@ uv build
 
 The coverage gate is **100% for statements and branches**. Tests exercise every registered read
 and mutation route through the MCP schemas and the pinned `tidalapi` adapter without contacting
-TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 121 tool
+TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 122 tool
 schemas.
 
 Official releases are published from GitHub Actions through npm Trusted Publishing, with no

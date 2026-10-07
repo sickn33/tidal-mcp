@@ -19,7 +19,7 @@ from tidal_mcp.catalog import (
     ReadToolSpec,
 )
 from tidal_mcp.exceptions import DraftError, TidalMCPError
-from tidal_mcp.exports import write_export
+from tidal_mcp.exports import write_derived_export, write_export
 from tidal_mcp.filtering import filter_recommendations
 from tidal_mcp.models import (
     ActionDraft,
@@ -27,6 +27,7 @@ from tidal_mcp.models import (
     CatalogResult,
     CollectedTracks,
     CollectionComparison,
+    DerivedExportResult,
     ExportResult,
     MutationResult,
     PlaylistPage,
@@ -360,6 +361,79 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
                 export_format=format,
                 name=name,
                 truncated=collected.truncated,
+            )
+        except TidalMCPError as exc:
+            raise _as_tool_error(exc) from exc
+
+    @server.tool(title="Export a derived TIDAL analysis", annotations=LOCAL_EXPORT)
+    async def tidal_export_analysis(
+        kind: Annotated[
+            Literal["summary", "comparison"],
+            Field(
+                description=(
+                    "summary writes one playlist's derived metrics; comparison writes the set "
+                    "comparison of two playlists."
+                )
+            ),
+        ],
+        playlist_id: Annotated[str, Field(min_length=1, max_length=100)],
+        right_playlist_id: Annotated[
+            str | None,
+            Field(
+                default=None,
+                max_length=100,
+                description="Required only when kind is comparison.",
+            ),
+        ] = None,
+        max_items: Annotated[int, Field(ge=1, le=2000)] = 500,
+        top_artists: Annotated[int, Field(ge=1, le=25)] = 5,
+        name: Annotated[
+            str | None,
+            Field(
+                default=None,
+                max_length=120,
+                description=(
+                    "Optional file name without directories. Unsafe characters are replaced."
+                ),
+            ),
+        ] = None,
+    ) -> DerivedExportResult:
+        """Write a playlist summary or a two-playlist comparison to a JSON file.
+
+        The derived result is computed by the same code the read tools use, then written through
+        the same private, non-overwriting writer as a playlist export, so this adds no new way to
+        reach the filesystem. JSON only: a derived result is structured analysis, not a track list,
+        so an M3U would carry no meaning.
+        """
+        if kind == "comparison" and not right_playlist_id:
+            raise ToolError("Provide right_playlist_id when kind is comparison.")
+        try:
+            if kind == "summary":
+                summary = await asyncio.to_thread(
+                    active_runtime.client().summarize_playlist,
+                    playlist_id,
+                    max_items,
+                    top_artists,
+                )
+                payload = summary.model_dump(exclude_none=True)
+                suggested = summary.title or "tidal-summary"
+            else:
+                comparison = await asyncio.to_thread(
+                    active_runtime.client().compare_playlists,
+                    playlist_id,
+                    right_playlist_id,
+                    max_items,
+                )
+                payload = comparison.model_dump(exclude_none=True)
+                left = comparison.left_title or "left"
+                right = comparison.right_title or "right"
+                suggested = f"{left} vs {right}"
+            return await asyncio.to_thread(
+                write_derived_export,
+                export_dir=active_runtime.settings.resolved_export_dir,
+                kind=kind,
+                suggested_name=name or suggested,
+                payload=payload,
             )
         except TidalMCPError as exc:
             raise _as_tool_error(exc) from exc

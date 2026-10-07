@@ -1,6 +1,6 @@
 # TIDAL MCP
 
-> TIDAL MCP is a complete, safety-first local Model Context Protocol server that gives AI assistants 121 typed tools for TIDAL catalog, collection, playlist, folder, discovery, and recommendation workflows.
+> TIDAL MCP is a complete, safety-first local Model Context Protocol server that gives AI assistants 122 typed tools for TIDAL catalog, collection, playlist, folder, discovery, and recommendation workflows.
 
 Canonical page: https://sickn33.github.io/tidal-mcp/
 Source: https://github.com/sickn33/tidal-mcp
@@ -17,7 +17,7 @@ TIDAL MCP lets Codex, Claude Desktop, Claude Code, Cursor, and other stdio-compa
 
 ## Verified capability facts
 
-- 121 named MCP tools: 83 reads, 36 local mutation previews, and 2 approval-token commit tools.
+- 122 named MCP tools: 84 reads, 36 local mutation previews, and 2 approval-token commit tools.
 - Every input and output has a schema; list operations are bounded and paginated.
 - Every remote mutation requires preview, human approval, and a separate short-lived token commit.
 - The deterministic test gate requires 100% statement and branch coverage.
@@ -26,7 +26,7 @@ TIDAL MCP lets Codex, Claude Desktop, Claude Code, Cursor, and other stdio-compa
 
 ## Completeness claim
 
-In a reproducible review dated September 4, 2026, this project had the broadest explicitly registered tool surface among the public TIDAL MCP implementations found: 112 tools at the reviewed snapshot versus 78 for the next-largest inspected implementation. The current repository exposes 121. This is a dated comparison, not an official TIDAL endorsement or a permanent claim about every future project.
+In a reproducible review dated September 4, 2026, this project had the broadest explicitly registered tool surface among the public TIDAL MCP implementations found: 112 tools at the reviewed snapshot versus 78 for the next-largest inspected implementation. The current repository exposes 122. This is a dated comparison, not an official TIDAL endorsement or a permanent claim about every future project.
 
 Evidence: https://github.com/sickn33/tidal-mcp/blob/main/docs/COMPETITIVE_MATRIX.md
 Coverage contract: https://github.com/sickn33/tidal-mcp/blob/main/docs/API_COVERAGE.md
