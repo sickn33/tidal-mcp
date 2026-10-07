@@ -1,7 +1,7 @@
 # API coverage contract
 
 This document defines what “complete” means for TIDAL MCP. The supported adapter is
-`tidalapi 0.8.11`; the executable source of truth is `src/tidal_mcp/catalog.py` plus the six
+`tidalapi 0.8.11`; the executable source of truth is `src/tidal_mcp/catalog.py` plus the ten
 handwritten workflow tools in `src/tidal_mcp/server.py`.
 
 ## Coverage result
@@ -14,6 +14,30 @@ handwritten workflow tools in `src/tidal_mcp/server.py`.
 - 100% coverage of stable, user-facing `tidalapi 0.8.11` operations that can be represented
   safely as catalog, library, playlist, folder, editorial, recommendation, or playback-metadata
   workflows.
+
+## What is deliberately not covered
+
+“Complete” above is bounded, and the bound is executable rather than a claim. `tests/test_tidalapi_surface.py`
+enumerates every public method across the 16 supported `tidalapi` classes and requires each one to
+appear either as covered or as an explicit exclusion. There are 123 covered methods and 70
+exclusions; a method that appears in neither list fails the build, so the surface cannot drift
+silently in either direction.
+
+The 70 exclusions fall into six groups, and the group sizes sum to exactly 70:
+
+| Group | Count | Members | Why it is excluded |
+| --- | ---: | --- | --- |
+| Parsers and factories | 38 | `parse_track`, `parse_playlist`, `parse_v2_mix`, `factory`, and siblings | Internal deserialization. The client consumes their results; exposing them would let a caller construct objects the server cannot trust. |
+| Authentication plumbing | 15 | `login_oauth`, `load_session_from_file`, `token_refresh`, `pkce_login_url`, and siblings | Authentication runs in the separate `tidal-auth` command. Keeping it out of the protocol is what prevents credentials from entering model context. |
+| Unbounded paginated helpers | 7 | `Playlist.tracks_paginated`, `Favorites.albums_paginated`, and siblings | They fetch an entire collection in one call with no cap. The MCP tools page explicitly instead, or use `tidal_collect_playlist_tracks`, which enforces one. |
+| Redundant aliases | 3 | `Artist.get_ep_singles`, `Artist.get_other`, `Artist.items` | The first two alias the covered `get_albums_ep_singles` and `get_albums_other`; `items` always returns an empty list. |
+| Page traversal implemented directly | 3 | `Page.next`, `PageCategory.show_more`, `PageCategoryV2.view_all` | The editorial tools read the private `_more` record and load the endpoint themselves, because `view_all()` calls a `Session.view_all` method that does not exist in `tidalapi 0.8.11`. |
+| Internal plumbing | 4 | `Stream.get_manifest_data`, `Stream.get_stream_manifest`, `PageCategoryV2.register_subclass`, `Session.convert_type` | Reachable only from the groups above, or superseded by `tidal_get_track_audio_resolution` and `tidal_get_track_playback_info`. |
+
+`Stream.get_stream_manifest` itself works; it is excluded because the playback-metadata tools
+already cover bit depth and sample rate. `Stream.get_mimetype`, which is genuinely broken upstream
+and raises `AttributeError`, is not part of the accounted surface because it is not a method of an
+enumerated class.
 
 ## Read surface
 
