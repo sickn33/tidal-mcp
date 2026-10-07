@@ -20,6 +20,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
+- The coverage contract said the server was built from "six handwritten workflow tools"; there are
+  now ten. It also asserted 100% coverage of the `tidalapi` surface without listing what the claim
+  excluded. It now states the real counts and accounts for all 70 exclusions in six groups whose
+  sizes are checked against the surface test, so the bound on "complete" is auditable.
 - The README, coverage contract, registry metadata, landing page, and llms files claimed a
   `credits` capability that does not exist. TIDAL exposes no credits endpoint and `tidalapi`'s
   `artist_roles` field stays `None` on real tracks, so the wording now lists only lyrics.

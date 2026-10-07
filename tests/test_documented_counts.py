@@ -91,3 +91,33 @@ def test_the_dated_comparison_keeps_its_snapshot_number() -> None:
 
     site_llms = read("site/llms.txt")
     assert "112 tools at the reviewed snapshot" in site_llms
+
+
+def test_the_coverage_document_accounts_for_every_exclusion() -> None:
+    """The coverage contract must list every excluded method, and its group sizes must add up."""
+    import re
+
+    from tests.test_tidalapi_surface import SURFACE
+
+    coverage = read("docs/API_COVERAGE.md")
+    covered = sum(len(methods) for methods, _ in SURFACE.values())
+    excluded = sum(len(methods) for _, methods in SURFACE.values())
+
+    assert f"There are {covered} covered methods and {excluded}" in coverage
+    assert f"The {excluded} exclusions fall into" in coverage
+
+    # Parse the counts out of the document's own table so the assertion tests the document rather
+    # than a number duplicated in this test.
+    table_rows = re.findall(r"^\| ([A-Z][^|]+?) \| (\d+) \|", coverage, re.MULTILINE)
+    assert table_rows, "the exclusion table is missing"
+    assert sum(int(count) for _, count in table_rows) == excluded, table_rows
+
+    # Every group must name at least one real member, and the families summarized by example must
+    # name a member that actually exists in the exclusion set.
+    all_excluded = {method for _, methods in SURFACE.values() for method in methods}
+    for _, _, members in re.findall(
+        r"^\| ([A-Z][^|]+?) \| (\d+) \| ([^|]+?) \|", coverage, re.MULTILINE
+    ):
+        names = re.findall(r"`([A-Za-z_][A-Za-z0-9_.]*)`", members)
+        leafs = {name.split(".")[-1] for name in names}
+        assert leafs & all_excluded, (members, "names no real excluded method")
