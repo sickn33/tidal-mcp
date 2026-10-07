@@ -150,7 +150,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
             "TIDAL. Playlist creation requires an exact preview followed by an approved commit "
             "token."
         ),
-        version="1.1.0",
+        version="1.1.1",
     )
 
     @server.tool(title="Check TIDAL authentication", annotations=READ_ONLY)
