@@ -64,6 +64,65 @@ async def smoke(command: str, server_args: list[str]) -> None:
         playlists = await call(client, "tidal_list_playlists", {"limit": 2})
         favorite_counts = await call(client, "tidal_get_favorite_counts", {})
 
+        # Editorial page navigation. Home and Explore are read together so the walk is proven on
+        # both page generations: Home returns version-2 lists, Explore returns link lists.
+        home = await call(client, "tidal_browse_home", {})
+        explore = await call(client, "tidal_browse_explore", {})
+        home_categories = len(home["item"]["details"].get("categories", []))
+        explore_categories = len(explore["item"]["details"].get("categories", []))
+
+        home_items = await call(
+            client,
+            "tidal_list_page_category_items",
+            {"page": "home", "category_index": 0, "limit": 3},
+        )
+        explore_links = await call(
+            client,
+            "tidal_list_page_links",
+            {"page": "explore", "category_index": 0, "limit": 3},
+        )
+        opened_link = await call(
+            client,
+            "tidal_open_page_link",
+            {"page": "explore", "category_index": 0, "link_index": 0},
+        )
+        expanded = await call(
+            client,
+            "tidal_show_more_page_category",
+            {"page": "home", "category_index": 2},
+        )
+        editorial = {
+            "home_categories": home_categories,
+            "explore_categories": explore_categories,
+            "home_category_items": home_items["count"],
+            "explore_links": explore_links["count"],
+            "opened_link_type": opened_link["item"]["type"],
+            "expanded_type": expanded["item"]["type"],
+        }
+
+        # Current-generation mixes: the favorites list carries MixV2 objects, whose body is only
+        # reachable through the dedicated tool.
+        mix_v2_items: int | None = None
+        favorite_mixes = await call(client, "tidal_list_favorite_mixes", {"limit": 1})
+        if favorite_mixes["items"]:
+            mix_body = await call(
+                client,
+                "tidal_get_mix_v2_items",
+                {"mix_id": favorite_mixes["items"][0]["id"], "limit": 5},
+            )
+            mix_v2_items = mix_body["count"]
+
+        # Video search and the ISRC field the allowlist previously dropped.
+        video_search = await call(
+            client,
+            "tidal_search",
+            {"query": "Daft Punk", "media_types": ["videos"], "limit": 2},
+        )
+        track_with_isrc = next(
+            (track for track in search["tracks"] if track.get("isrc")),
+            None,
+        )
+
         playlist_track_count: int | None = None
         playlist_items = playlists["items"]
         if playlist_items:
@@ -124,6 +183,10 @@ async def smoke(command: str, server_args: list[str]) -> None:
                     "favorite_counts": favorite_counts["value"],
                     "track_detail_type": track_detail["item"]["type"] if track_detail else None,
                     "recommendations": recommendation_summary,
+                    "editorial": editorial,
+                    "mix_v2_page_count": mix_v2_items,
+                    "video_search_count": len(video_search["videos"]),
+                    "search_track_has_isrc": track_with_isrc is not None,
                     "writes_enabled": False,
                 },
                 indent=2,

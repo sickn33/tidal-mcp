@@ -385,6 +385,48 @@ def test_mix_v2_items_resolve_lazy_wrappers() -> None:
     assert page.limit == 1
 
 
+def test_show_more_strips_the_advertised_home_prefix() -> None:
+    session = UniversalSession()
+    requested: list[str] = []
+
+    def page_get(api_path: str) -> EditorialPageNode:
+        requested.append(api_path)
+        return EditorialPageNode(api_path)
+
+    session.page = SimpleNamespace(get=page_get)
+    session.home = lambda: EditorialPageNode("home")
+    category = CategoryNode()
+    category._more = SimpleNamespace(api_path="home/pages/DAILY_MIXES/view-all")
+    session.home = lambda: SimpleNamespace(
+        title="Home",
+        categories=[category],
+    )
+    client = TidalClient(session)
+
+    result = client.execute_read(
+        "tidal_show_more_page_category",
+        {"page": "home", "category_index": 0},
+    )
+    assert requested == ["pages/DAILY_MIXES/view-all"]
+    assert result.item.id == "pages/DAILY_MIXES/view-all"
+
+
+def test_show_more_reports_an_empty_expansion_instead_of_failing() -> None:
+    session = UniversalSession()
+
+    def page_get(_api_path: str) -> Node:
+        raise KeyError("items")
+
+    session.page = SimpleNamespace(get=page_get)
+    client = TidalClient(session)
+
+    with pytest.raises(TidalClientError, match="no expandable items right now"):
+        client.execute_read(
+            "tidal_show_more_page_category",
+            {"page": "home", "category_index": 0},
+        )
+
+
 def test_create_playlist_action_adds_nonempty_track_list() -> None:
     client = TidalClient(UniversalSession())
     result = client.execute_mutation(

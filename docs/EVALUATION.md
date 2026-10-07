@@ -23,3 +23,7 @@ The live smoke script intentionally samples representative operations instead of
 reads against the real account on every run. The exhaustive route matrix is deterministic and runs
 offline in the test suite.
 
+The live sample covers the surfaces most likely to break silently: search across four media types,
+favorites and playlist pagination, track detail, recommendations, editorial page navigation on
+both page generations, a current-generation mix body, video search, and the track ISRC field. It
+runs with `TIDAL_MCP_ENABLE_WRITES` removed from the environment, so it cannot mutate the account.
