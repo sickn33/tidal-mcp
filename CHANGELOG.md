@@ -7,6 +7,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- `tidal_export_analysis` writes a playlist summary or a two-playlist comparison to a JSON file.
+  It computes the derived result with the same code the read tools use and writes it through the
+  same private, non-overwriting writer as a playlist export, so the derived export adds no new way
+  to reach the filesystem. JSON only: a derived result is structured analysis, not a track list.
+
 ### Changed
 
 - Playlist tools now resolve the playlist once per call and reuse that object, instead of

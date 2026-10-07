@@ -10,7 +10,13 @@ import pytest
 
 from tidal_mcp.client import TidalClient
 from tidal_mcp.exceptions import ExportError, TidalClientError
-from tidal_mcp.exports import render_json, render_m3u, safe_filename, write_export
+from tidal_mcp.exports import (
+    render_json,
+    render_m3u,
+    safe_filename,
+    write_derived_export,
+    write_export,
+)
 from tidal_mcp.models import Track
 
 
@@ -302,3 +308,66 @@ def test_playlist_track_count_helper_falls_back_to_none() -> None:
     client = TidalClient(session)
 
     assert client._playlist_track_count("left") is None
+
+
+def test_derived_export_writes_private_json(tmp_path: Path) -> None:
+    directory = tmp_path / "exports"
+    result = write_derived_export(
+        export_dir=directory,
+        kind="summary",
+        suggested_name="My Summary",
+        payload={"playlist_id": "p1", "tracks_analyzed": 3},
+    )
+
+    target = Path(result.path)
+    assert target.exists()
+    assert target.name == "My-Summary.json"
+    assert target.stat().st_mode & 0o777 == 0o600
+    assert result.kind == "summary"
+    assert result.format == "json"
+    assert result.bytes_written == target.stat().st_size
+    assert json.loads(target.read_text(encoding="utf-8"))["tracks_analyzed"] == 3
+
+
+def test_derived_export_refuses_to_overwrite(tmp_path: Path) -> None:
+    directory = tmp_path / "exports"
+    arguments = {
+        "export_dir": directory,
+        "kind": "comparison",
+        "suggested_name": "Compare",
+        "payload": {"shared_count": 0},
+    }
+    write_derived_export(**arguments)
+    with pytest.raises(ExportError, match="already exists"):
+        write_derived_export(**arguments)
+
+
+def test_derived_export_sanitizes_a_hostile_name(tmp_path: Path) -> None:
+    directory = tmp_path / "exports"
+    result = write_derived_export(
+        export_dir=directory,
+        kind="summary",
+        suggested_name="../../escape attempt",
+        payload={},
+    )
+    target = Path(result.path)
+    assert target.parent == directory
+    assert ".." not in target.name
+
+
+def test_derived_export_shares_the_atomic_writer(tmp_path: Path, monkeypatch) -> None:
+    """A failure while writing must not leave a partial file, same as a track export."""
+    directory = tmp_path / "exports"
+
+    def explode(*_args: object, **_kwargs: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(Path, "replace", explode)
+    with pytest.raises(OSError):
+        write_derived_export(
+            export_dir=directory,
+            kind="summary",
+            suggested_name="Partial",
+            payload={"a": 1},
+        )
+    assert list(directory.iterdir()) == []

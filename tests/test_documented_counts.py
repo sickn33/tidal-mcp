@@ -18,7 +18,7 @@ TOTAL = len(EXPECTED_TOOLS)
 REQUIRED_TOTAL = len(READ_TOOL_SPECS) + len(MUTATION_TOOL_SPECS)
 # Handwritten registrations: auth, search, favorite tracks, playlists, playlist tracks, collection,
 # summary, comparison, recommendation, export, and the two commit tools.
-HANDWRITTEN = 12
+HANDWRITTEN = 13
 # The catalog inventory plus the handwritten read tools. The two commit aliases are the only
 # registered tools that can write, and the mutation previews are counted separately.
 READS = TOTAL - len(MUTATION_TOOL_SPECS) - 2
@@ -30,8 +30,8 @@ def read(relative: str) -> str:
 
 def test_the_registered_surface_matches_the_declared_inventory() -> None:
     assert REQUIRED_TOTAL + HANDWRITTEN == TOTAL
-    assert READS == 83
-    assert TOTAL == 121
+    assert READS == 84
+    assert TOTAL == 122
 
 
 def test_both_expected_tool_sets_agree() -> None:

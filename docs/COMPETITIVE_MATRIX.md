@@ -11,7 +11,7 @@ repositories. It also combines structured outputs, a universal preview-token wri
 | Implementation | Registered tools | Inspected commit | Notable scope |
 | --- | ---: | --- | --- |
 | **TIDAL MCP 1.0** | **112** | September 4, 2026 snapshot | Complete pinned `tidalapi` application surface; 74 reads, 36 previews, 2 commits |
-| **TIDAL MCP, current** | **121** | current repository | The snapshot plus editorial navigation, v2 mix items, video search, collection and comparison tools, and local export; 83 reads, 36 previews, 2 commits |
+| **TIDAL MCP, current** | **122** | current repository | The snapshot plus editorial navigation, v2 mix items, video search, collection, comparison, derived export, and playlist export; 84 reads, 36 previews, 2 commits |
 | [michalu/tidal-mcp](https://github.com/michalu/tidal-mcp) | 78 | `dc21c646ce49` | Broad consumer API surface plus UPnP/DLNA playback and multiple transports |
 | [lucaperret/tidal-cli](https://github.com/lucaperret/tidal-cli) | 40 | `24f20a852978` | Official API v2 CLI plus hosted MCP, playback, library, and sharing workflows |
 | [teobouancheau/tidal-mcp](https://github.com/teobouancheau/tidal-mcp) | 35 | `2ffa136e7fc0` | Official developer API, typed TypeScript, local and Streamable HTTP transports |
@@ -44,7 +44,7 @@ counts. Commit hashes make the snapshot reproducible. The compact research recor
 
 At the inspected commits:
 
-- TIDAL MCP exposed **112** named tools on September 4, 2026, and now exposes **121**; the
+- TIDAL MCP exposed **112** named tools on September 4, 2026, and now exposes **122**; the
   next-largest reviewed surface exposes **78**.
 - Every TIDAL MCP tool has bounded inputs, structured output, and MCP safety annotations.
 - Every remote mutation passes through a local preview and separate approval-token commit.

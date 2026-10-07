@@ -196,6 +196,27 @@ async def _smoke(command: str, server_args: list[str], export_directory: str) ->
                 "bytes": exported["bytes_written"],
             }
 
+        # A derived analysis written to disk, inside the temporary export directory the smoke
+        # test sets for the server.
+        analysis_export: dict[str, object] | None = None
+        if playlist_items:
+            exported_analysis = await call(
+                client,
+                "tidal_export_analysis",
+                {
+                    "kind": "summary",
+                    "playlist_id": playlist_items[0]["id"],
+                    "max_items": 40,
+                    "top_artists": 3,
+                    "name": f"smoke-summary-{playlist_items[0]['id'][:8]}",
+                },
+            )
+            analysis_export = {
+                "kind": exported_analysis["kind"],
+                "format": exported_analysis["format"],
+                "bytes": exported_analysis["bytes_written"],
+            }
+
         # Video search and the ISRC field the allowlist previously dropped.
         video_search = await call(
             client,
@@ -271,6 +292,7 @@ async def _smoke(command: str, server_args: list[str], export_directory: str) ->
                     "collected_playlist_count": collected_count,
                     "comparison": comparison_counts,
                     "export": export_result,
+                    "analysis_export": analysis_export,
                     "summary": summary_counts,
                     "video_search_count": len(video_search["videos"]),
                     "search_track_has_isrc": track_with_isrc is not None,

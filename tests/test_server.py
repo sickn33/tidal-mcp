@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,7 @@ EXPECTED_TOOLS = {
     "tidal_summarize_playlist",
     "tidal_compare_playlists",
     "tidal_export_playlist",
+    "tidal_export_analysis",
     *(spec.name for spec in READ_TOOL_SPECS),
     *(spec.name for spec in MUTATION_TOOL_SPECS),
     "tidal_commit_action",
@@ -85,15 +87,17 @@ def test_lists_exact_tools_with_schemas_and_safety_annotations(tmp_path: Path) -
                 "tidal_commit_action",
                 "tidal_commit_create_playlist",
                 "tidal_export_playlist",
+                "tidal_export_analysis",
             }:
                 assert tools[name].annotations is not None
                 assert tools[name].annotations.read_only_hint is True
-            # The export writes to local disk, so it must not claim to be read-only, and it must
-            # not claim to be destructive either: it never touches TIDAL or an existing file.
-            export = tools["tidal_export_playlist"].annotations
-            assert export is not None
-            assert export.read_only_hint is False
-            assert export.destructive_hint is False
+            # Both export tools write to local disk, so neither may claim to be read-only, and
+            # neither may claim to be destructive: they never touch TIDAL or an existing file.
+            for name in ("tidal_export_playlist", "tidal_export_analysis"):
+                export = tools[name].annotations
+                assert export is not None
+                assert export.read_only_hint is False
+                assert export.destructive_hint is False
             assert tools["tidal_preview_create_playlist"].annotations.destructive_hint is False
             assert tools["tidal_commit_action"].annotations.destructive_hint is True
             assert tools["tidal_commit_create_playlist"].annotations.idempotent_hint is True
@@ -603,5 +607,84 @@ def test_export_reports_a_collection_failure_as_a_safe_tool_error(tmp_path: Path
             result = await client.call_tool("tidal_export_playlist", {"playlist_id": "playlist-1"})
             assert result.is_error is True
             assert "safe export failure" in result.content[0].text
+
+    asyncio.run(scenario())
+
+
+def test_export_analysis_writes_a_summary_and_a_comparison(tmp_path: Path) -> None:
+    runtime, _ = make_runtime(tmp_path)
+
+    async def scenario() -> None:
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            summary = await client.call_tool(
+                "tidal_export_analysis",
+                {"kind": "summary", "playlist_id": "playlist-1", "max_items": 10},
+            )
+            assert summary.is_error is False
+            assert summary.structured_content["kind"] == "summary"
+            assert summary.structured_content["format"] == "json"
+            summary_path = Path(summary.structured_content["path"])
+            payload = json.loads(summary_path.read_text(encoding="utf-8"))
+            assert payload["tracks_analyzed"] == 3
+
+            comparison = await client.call_tool(
+                "tidal_export_analysis",
+                {
+                    "kind": "comparison",
+                    "playlist_id": "playlist-1",
+                    "right_playlist_id": "playlist-2",
+                },
+            )
+            assert comparison.is_error is False
+            assert comparison.structured_content["kind"] == "comparison"
+            comparison_path = Path(comparison.structured_content["path"])
+            assert comparison_path.exists()
+            # Both files live in the same private directory and neither is group-readable.
+            assert summary_path.parent == comparison_path.parent
+            assert summary_path.stat().st_mode & 0o777 == 0o600
+
+    asyncio.run(scenario())
+
+
+def test_export_analysis_requires_the_right_playlist_for_a_comparison(tmp_path: Path) -> None:
+    runtime, _ = make_runtime(tmp_path)
+
+    async def scenario() -> None:
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            result = await client.call_tool(
+                "tidal_export_analysis",
+                {"kind": "comparison", "playlist_id": "playlist-1"},
+            )
+            assert result.is_error is True
+            assert "right_playlist_id" in result.content[0].text
+
+    asyncio.run(scenario())
+
+
+def test_export_analysis_reports_failures_as_safe_tool_errors(tmp_path: Path) -> None:
+    runtime, fake = make_runtime(tmp_path)
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        raise TidalClientError("safe analysis failure")
+
+    async def scenario() -> None:
+        fake.summarize_playlist = fail
+        fake.compare_playlists = fail
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            summary = await client.call_tool(
+                "tidal_export_analysis", {"kind": "summary", "playlist_id": "playlist-1"}
+            )
+            assert summary.is_error is True
+            assert "safe analysis failure" in summary.content[0].text
+            comparison = await client.call_tool(
+                "tidal_export_analysis",
+                {
+                    "kind": "comparison",
+                    "playlist_id": "playlist-1",
+                    "right_playlist_id": "playlist-2",
+                },
+            )
+            assert comparison.is_error is True
+            assert "safe analysis failure" in comparison.content[0].text
 
     asyncio.run(scenario())

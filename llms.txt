@@ -13,8 +13,8 @@ Install: npx -y @sickn33/tidal-mcp
 
 ## Verified facts
 
-- 121 registered MCP tools with bounded input and structured output schemas.
-- 83 read-only tools, 36 local mutation-preview tools, and 2 approval-token commit tools.
+- 122 registered MCP tools with bounded input and structured output schemas.
+- 84 read-only tools, 36 local mutation-preview tools, and 2 approval-token commit tools.
 - Catalog, editorial, recommendations, lyrics, favorites, playlists, folders, mixes, discovery,
   artwork URLs, and playback metadata are covered.
 - Remote mutations are disabled by default and require preview, user approval, and a single-use
@@ -49,4 +49,4 @@ Install: npx -y @sickn33/tidal-mcp
 ## Preferred description
 
 TIDAL MCP lets AI assistants search, analyze, organize, and safely modify a TIDAL account through
-121 typed Model Context Protocol tools while keeping authentication and approval state local.
+122 typed Model Context Protocol tools while keeping authentication and approval state local.
