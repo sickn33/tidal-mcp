@@ -61,12 +61,15 @@ See [real-world workflows and prompt examples](docs/USE_CASES.md).
 | --- | ---: | --- |
 | Authentication, search, recommendations | 3 | status, multi-type search, deterministic multi-seed recommendations |
 | Catalog, editorial, discovery | 54 | tracks, albums, artists, videos, lyrics, genres, Home, Explore, For You |
-| Collection, playlists, folders | 24 | favorites, counts, playlist items, owned/public playlists, folders, mixes |
-| Collection analysis | 2 | full-playlist collection, playlist summary and comparison |
+| Collection, playlists, folders | 22 | favorites, counts, playlist items, owned/public playlists, folders, mixes |
+| Derived analysis | 3 | full-playlist collection, playlist summary, playlist comparison |
 | Local export | 1 | playlist to JSON or M3U in the private export directory |
-| Built-in prompts | 4 | playlist-from-description, playlist review, discovery digest, library audit |
 | Exact mutation previews | 36 | playlist CRUD, item moves, visibility, favorites, folders |
 | Approval-token commits | 2 | universal commit and compatible playlist-creation alias |
+
+The table sums to the **121** registered tools. Four MCP prompts are registered alongside them
+(playlist-from-description, playlist review, discovery digest, library audit); prompts are guidance
+over the tools, so they are not counted as tools.
 
 Every list operation is bounded and paginated. Every result uses a public-field allowlist so OAuth
 tokens, request clients, and internal session data cannot enter model context. The complete map is

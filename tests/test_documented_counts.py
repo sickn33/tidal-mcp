@@ -134,3 +134,58 @@ def test_the_coverage_document_accounts_for_every_exclusion() -> None:
         names = re.findall(r"`([A-Za-z_][A-Za-z0-9_.]*)`", members)
         leafs = {name.split(".")[-1] for name in names}
         assert leafs & all_excluded, (members, "names no real excluded method")
+
+
+def test_the_readme_tool_table_sums_to_the_registered_total() -> None:
+    """The README groups the surface into a table; the group sizes must add up to the real total.
+
+    The table is the first thing a reader uses to size the project, so a row that silently counts
+    two tools while saying three is a real defect, not a rounding detail. Prompts are guidance over
+    the tools and must not be counted as tools.
+    """
+    import re
+
+    readme = read("README.md")
+    block = readme[readme.index("## Tool coverage") :]
+    rows = re.findall(r"^\| ([^|]+?) \| (\d+) \|", block, re.MULTILINE)
+    assert rows, "the README tool table is missing"
+
+    labels = [label.strip() for label, _ in rows]
+    assert all("prompt" not in label.lower() for label in labels), (
+        "prompts must not be counted as tools"
+    )
+    assert sum(int(count) for _, count in rows) == TOTAL, rows
+
+    # The prompt count is stated separately and must match the registered prompts.
+    prompts = read("src/tidal_mcp/prompts.py")
+    registered = prompts.count("@server.prompt(")
+    assert registered == 4, registered
+    assert f"The table sums to the **{TOTAL}** registered tools." in readme
+    assert "Four MCP prompts are registered alongside them" in readme
+
+
+def test_the_landing_page_capability_ranges_cover_every_tool_once() -> None:
+    """The landing page numbers its capability groups; the ranges must tile 1..TOTAL exactly.
+
+    A range that overlaps or leaves a gap misstates the surface as surely as a wrong total, and
+    the ranges had already drifted twice while the headline number stayed correct.
+    """
+    import re
+
+    site = read("site/index.html")
+    labels = re.findall(r'<span class="cap-number">(?:(\d+)|(\d+)\u2014(\d+))</span>', site)
+    assert labels, "the landing page capability ranges are missing"
+
+    ranges: list[tuple[int, int]] = []
+    for single, start, end in labels:
+        if single:
+            ranges.append((int(single), int(single)))
+        else:
+            ranges.append((int(start), int(end)))
+    ranges.sort()
+
+    assert ranges[0][0] == 1, ranges
+    assert ranges[-1][1] == TOTAL, ranges
+    for index in range(len(ranges) - 1):
+        assert ranges[index][1] + 1 == ranges[index + 1][0], (ranges, "gap or overlap")
+    assert sum(end - start + 1 for start, end in ranges) == TOTAL
