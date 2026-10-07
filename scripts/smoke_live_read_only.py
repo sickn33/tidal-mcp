@@ -7,6 +7,7 @@ import asyncio
 import json
 import os
 import sys
+import tempfile
 
 from mcp import Client, StdioServerParameters
 
@@ -48,8 +49,15 @@ def parse_args() -> argparse.Namespace:
 
 
 async def smoke(command: str, server_args: list[str]) -> None:
+    with tempfile.TemporaryDirectory(prefix="tidal-smoke-exports-") as export_directory:
+        await _smoke(command, server_args, export_directory)
+
+
+async def _smoke(command: str, server_args: list[str], export_directory: str) -> None:
     environment = dict(os.environ)
     environment.pop("TIDAL_MCP_ENABLE_WRITES", None)
+    # The export check writes a file, so it must never land in the caller's real export directory.
+    environment["TIDAL_MCP_EXPORT_DIR"] = export_directory
     parameters = StdioServerParameters(
         command=command,
         args=server_args,
@@ -151,6 +159,43 @@ async def smoke(command: str, server_args: list[str]) -> None:
                 "duplicate_groups": len(summary["duplicate_tracks"]),
             }
 
+        # Playlist comparison and a local export, kept inside a temporary directory. The smoke
+        # test never writes to the user's real export directory.
+        comparison_counts: dict[str, int] | None = None
+        if len(playlist_items) >= 2:
+            comparison = await call(
+                client,
+                "tidal_compare_playlists",
+                {
+                    "left_playlist_id": playlist_items[0]["id"],
+                    "right_playlist_id": playlist_items[1]["id"],
+                    "max_items": 60,
+                },
+            )
+            comparison_counts = {
+                "shared": comparison["shared_count"],
+                "left_only": comparison["left_only_count"],
+                "right_only": comparison["right_only_count"],
+            }
+
+        export_result: dict[str, object] | None = None
+        if playlist_items:
+            exported = await call(
+                client,
+                "tidal_export_playlist",
+                {
+                    "playlist_id": playlist_items[0]["id"],
+                    "format": "m3u",
+                    "max_items": 5,
+                    "name": f"smoke-{playlist_items[0]['id'][:8]}",
+                },
+            )
+            export_result = {
+                "format": exported["format"],
+                "tracks": exported["track_count"],
+                "bytes": exported["bytes_written"],
+            }
+
         # Video search and the ISRC field the allowlist previously dropped.
         video_search = await call(
             client,
@@ -224,6 +269,8 @@ async def smoke(command: str, server_args: list[str]) -> None:
                     "editorial": editorial,
                     "mix_v2_page_count": mix_v2_items,
                     "collected_playlist_count": collected_count,
+                    "comparison": comparison_counts,
+                    "export": export_result,
                     "summary": summary_counts,
                     "video_search_count": len(video_search["videos"]),
                     "search_track_has_isrc": track_with_isrc is not None,

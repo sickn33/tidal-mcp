@@ -5,6 +5,21 @@ All notable changes to TIDAL MCP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- The README tool table summed to 126 against a documented total of 121: the collection group said
+  24 while holding 22, the analysis group said 2 while holding 3, and prompts were counted as
+  tools. A test now parses the table and fails the build unless its rows add up and no row counts a
+  prompt as a tool.
+- The landing page numbered its capability groups 1-18, 19-34, 35-52, 53-74, 75-110, 120-121, which
+  left 111-119 unassigned and no longer matched the surface. The ranges now tile 1-121 with no gap
+  or overlap, and a test enforces that.
+- The authenticated smoke test writes an export while checking `tidal_export_playlist`. It now sets
+  `TIDAL_MCP_EXPORT_DIR` to a temporary directory, so running it can never write into the caller's
+  real export directory.
+
 ## [1.3.0] - 2026-10-07
 
 ### Added

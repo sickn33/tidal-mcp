@@ -10,9 +10,30 @@ until the user approves the exact change.
 > report duration, top artists and albums, release-year distribution, explicit tracks, duplicate
 > candidates, and ordering patterns. Do not modify anything.
 
-Useful tools include `tidal_list_playlists`, `tidal_get_playlist`,
-`tidal_get_playlist_track_count`, `tidal_get_playlist_item_count`,
-`tidal_get_playlist_tracks`, and `tidal_get_playlist_items`.
+`tidal_summarize_playlist` computes duration, top artists, decade spread, explicit count, tracks
+without a parseable release date, and exact duplicate groups in one call, and
+`tidal_collect_playlist_tracks` returns the full track list behind an explicit cap. Reach for
+`tidal_get_playlist_tracks` and `tidal_get_playlist_items` only when you want a specific page, and
+`tidal_get_playlist_track_count` when you need TIDAL's own counter rather than the collected length.
+
+## Compare two playlists
+
+> Compare “Road Trip” and “Late Night” and tell me which tracks they share, which are only in one,
+> and whether either is missing something obvious from the other.
+
+`tidal_compare_playlists` reports the shared, left-only, and right-only sets. It matches on the
+normalized title and artist pair rather than on track id, because TIDAL serves distinct ids for the
+same recording across releases, and it counts distinct matches so a duplicated track does not
+inflate the result. Report the counts and the overlap; do not edit either playlist unless asked.
+
+## Export a playlist to disk
+
+> Save “Road Trip” as an M3U so I can keep a copy, and tell me where it landed.
+
+`tidal_export_playlist` writes JSON or M3U into the private export directory, which defaults to a
+subdirectory of your data directory and can be moved with `TIDAL_MCP_EXPORT_DIR`. It refuses to
+overwrite an existing file, so ask for a different name rather than clearing anything. The M3U
+lists titles and TIDAL URLs; no audio is downloaded.
 
 ## Build constrained recommendations
 
