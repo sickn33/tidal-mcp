@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, NoReturn, Protocol
@@ -26,11 +27,15 @@ from tidal_mcp.formatting import (
     public_item,
 )
 from tidal_mcp.models import (
+    ArtistShare,
     AuthStatus,
     CatalogResult,
+    CollectedTracks,
     CommitPlaylistResult,
+    DuplicateTrack,
     MutationResult,
     PlaylistPage,
+    PlaylistSummary,
     SearchResponse,
     SearchType,
     Track,
@@ -292,6 +297,154 @@ class TidalClient:
         except Exception as exc:
             self._raise_operation_error("read that playlist", exc)
         return self._track_page(tracks, limit, offset)
+
+    def collect_playlist_tracks(
+        self,
+        playlist_id: str,
+        max_items: int,
+        page_size: int = 50,
+    ) -> CollectedTracks:
+        """Walk every page of a playlist until the cap or the end of the collection.
+
+        A playlist can answer a requested window with fewer items than the window holds, the same
+        way the favorites endpoints do, so page length alone cannot decide when the walk ends. The
+        walk therefore advances by the requested window and, when the playlist's exact track count
+        is available, stops only once the window passes that count. The cap is explicit:
+        `truncated` reports whether the walk stopped at the cap without reaching the end, so a
+        consumer can never mistake a capped result for a complete playlist.
+        """
+        items: list[Track] = []
+        offset = 0
+        pages = 0
+        truncated = False
+        total = self._playlist_track_count(playlist_id)
+        try:
+            while True:
+                window = min(page_size, max_items - len(items))
+                if total is not None:
+                    window = min(window, total - offset)
+                if window <= 0:
+                    break
+                page = self.get_playlist_tracks(
+                    playlist_id,
+                    limit=window,
+                    offset=offset,
+                )
+                pages += 1
+                items.extend(page.items)
+                advanced = page.next_offset if page.next_offset is not None else offset + window
+                if advanced <= offset:
+                    # Defensive: a provider cursor that does not advance would loop forever.
+                    break
+                offset = advanced
+                if len(items) >= max_items:
+                    # The cap is only a truncation when the collection continues past it. A cap
+                    # that lands exactly on the end of the playlist is a complete result.
+                    if total is not None:
+                        truncated = offset < total
+                    else:
+                        truncated = bool(page.has_more and page.next_offset is not None)
+                    break
+                if total is None and (not page.has_more or page.next_offset is None):
+                    break
+        except TidalMCPError:
+            raise
+        except Exception as exc:
+            self._raise_operation_error("read that playlist", exc)
+        return CollectedTracks(
+            playlist_id=playlist_id,
+            items=items[:max_items],
+            count=min(len(items), max_items),
+            max_items=max_items,
+            truncated=truncated,
+            pages_fetched=pages,
+        )
+
+    def _playlist_track_count(self, playlist_id: str) -> int | None:
+        """Return the playlist's exact track count, or None when TIDAL does not provide it."""
+        try:
+            return int(self.session.playlist(playlist_id).get_tracks_count())
+        except Exception as exc:
+            LOGGER.info("Playlist track count unavailable (%s)", type(exc).__name__)
+            return None
+
+    def summarize_playlist(
+        self,
+        playlist_id: str,
+        max_items: int,
+        top_artists: int,
+    ) -> PlaylistSummary:
+        """Derive a deterministic summary from a playlist's resolved tracks.
+
+        Every number comes from fields the read tools already expose, so the analysis adds no new
+        upstream surface. Duplicates are keyed on the normalized title and artist pair, because
+        TIDAL serves distinct track ids for the same recording across releases.
+        """
+        collected = self.collect_playlist_tracks(playlist_id, max_items=max_items)
+        title: str | None = None
+        try:
+            title = format_playlist(self.session.playlist(playlist_id)).title
+        except Exception as exc:
+            LOGGER.info("Playlist title unavailable for the summary (%s)", type(exc).__name__)
+
+        artist_counts: Counter[str] = Counter()
+        decade_counts: Counter[str] = Counter()
+        duplicate_ids: dict[tuple[str, str], list[str]] = {}
+        duration = 0
+        explicit = 0
+        without_release_date = 0
+        for track in collected.items:
+            artist_counts[track.artist] += 1
+            duration += track.duration_seconds or 0
+            explicit += 1 if track.explicit else 0
+            if (
+                track.release_date
+                and len(track.release_date) >= 4
+                and track.release_date[:4].isdigit()
+            ):
+                decade = f"{int(track.release_date[:4]) // 10 * 10}s"
+                decade_counts[decade] += 1
+            else:
+                without_release_date += 1
+            key = (track.title.strip().casefold(), track.artist.strip().casefold())
+            duplicate_ids.setdefault(key, []).append(track.id)
+
+        duplicates = [
+            DuplicateTrack(
+                title=next(
+                    track.title
+                    for track in collected.items
+                    if (track.title.strip().casefold(), track.artist.strip().casefold()) == key
+                ),
+                artist=next(
+                    track.artist
+                    for track in collected.items
+                    if (track.title.strip().casefold(), track.artist.strip().casefold()) == key
+                ),
+                occurrences=len(ids),
+                track_ids=ids,
+            )
+            for key, ids in duplicate_ids.items()
+            if len(ids) > 1
+        ]
+        duplicates.sort(key=lambda item: (-item.occurrences, item.title.casefold()))
+        return PlaylistSummary(
+            playlist_id=playlist_id,
+            title=title,
+            tracks_analyzed=collected.count,
+            max_items=max_items,
+            truncated=collected.truncated,
+            total_duration_seconds=duration,
+            distinct_artists=len(artist_counts),
+            top_artists=[
+                ArtistShare(artist=artist, track_count=count)
+                for artist, count in artist_counts.most_common(top_artists)
+            ],
+            decade_counts=dict(sorted(decade_counts.items())),
+            explicit_tracks=explicit,
+            tracks_without_release_date=without_release_date,
+            duplicate_tracks=duplicates,
+        )
 
     def get_track_radio(self, track_id: str, limit: int) -> list[Track]:
         try:

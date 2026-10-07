@@ -7,11 +7,14 @@ from collections.abc import Sequence
 from tidal_mcp.models import (
     Album,
     Artist,
+    ArtistShare,
     CatalogResult,
+    CollectedTracks,
     CommitPlaylistResult,
     MutationResult,
     Playlist,
     PlaylistPage,
+    PlaylistSummary,
     SearchResponse,
     SearchType,
     Track,
@@ -153,6 +156,37 @@ class FakeMusicClient:
     def get_playlist_tracks(self, playlist_id: str, limit: int, offset: int) -> TrackPage:
         items = [TRACKS["t-1"], TRACKS["t-2"], TRACKS["t-3"]]
         return self._page(items, limit, offset)
+
+    def collect_playlist_tracks(self, playlist_id: str, max_items: int) -> CollectedTracks:
+        del playlist_id
+        items = [TRACKS["t-1"], TRACKS["t-2"], TRACKS["t-3"]][:max_items]
+        return CollectedTracks(
+            playlist_id="playlist-1",
+            items=items,
+            count=len(items),
+            max_items=max_items,
+            truncated=False,
+            pages_fetched=1,
+        )
+
+    def summarize_playlist(
+        self, playlist_id: str, max_items: int, top_artists: int
+    ) -> PlaylistSummary:
+        del playlist_id, max_items
+        return PlaylistSummary(
+            playlist_id="playlist-1",
+            title=PLAYLIST.title,
+            tracks_analyzed=3,
+            max_items=10,
+            truncated=False,
+            total_duration_seconds=630,
+            distinct_artists=2,
+            top_artists=[ArtistShare(artist="Northline", track_count=2)][:top_artists],
+            decade_counts={"2020s": 3},
+            explicit_tracks=0,
+            tracks_without_release_date=0,
+            duplicate_tracks=[],
+        )
 
     def get_track_radio(self, track_id: str, limit: int) -> list[Track]:
         radios = {

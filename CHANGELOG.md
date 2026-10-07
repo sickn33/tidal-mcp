@@ -5,6 +5,27 @@ All notable changes to TIDAL MCP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Two read tools that remove the pagination loop from the caller. `tidal_collect_playlist_tracks`
+  walks a playlist's pages until the end or an explicit cap and reports `truncated`, so a capped
+  result is never mistaken for a complete playlist. `tidal_summarize_playlist` derives duration,
+  top artists, decade spread, explicit count, tracks without a parseable release date, and exact
+  duplicates from metadata the read tools already return.
+- Four built-in MCP prompts: `tidal_playlist_from_description`, `tidal_playlist_review`,
+  `tidal_discovery_digest`, and `tidal_library_audit`. Each names the tools to use, and the ones
+  that touch writes stop at the preview and require the user's approval before committing.
+
+### Fixed
+
+- The README, coverage contract, registry metadata, landing page, and llms files claimed a
+  `credits` capability that does not exist. TIDAL exposes no credits endpoint and `tidalapi`'s
+  `artist_roles` field stays `None` on real tracks, so the wording now lists only lyrics.
+- The documented tool counts had drifted from the code. A test now derives them from the
+  executable inventory and fails the build when a document disagrees.
+
 ## [1.1.1] - 2026-10-07
 
 ### Fixed

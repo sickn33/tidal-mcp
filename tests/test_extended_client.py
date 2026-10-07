@@ -10,7 +10,7 @@ import tidalapi.types as tidal_types
 from tidal_mcp.catalog import MUTATION_TOOL_SPECS, READ_TOOL_SPECS
 from tidal_mcp.client import TidalClient
 from tidal_mcp.exceptions import PartialPlaylistCreationError, TidalClientError
-from tidal_mcp.models import CommitPlaylistResult, Playlist
+from tidal_mcp.models import CommitPlaylistResult, Playlist, Track, TrackPage
 
 
 class Node:
@@ -781,3 +781,464 @@ def test_uncapped_listing_above_the_provider_maximum_keeps_the_requested_limit()
     assert page.count == 50
     assert page.limit == 60
     assert page.offset == 0
+
+
+class CollectablePlaylist:
+    """A playlist whose pages are driven by a configurable item count."""
+
+    def __init__(self, total: int, *, short_pages: bool = False) -> None:
+        self.total = total
+        self.short_pages = short_pages
+        self.requests: list[tuple[int, int]] = []
+
+    def tracks(self, limit: int, offset: int) -> list[SimpleNamespace]:
+        self.requests.append((limit, offset))
+        available = self.total - offset
+        page = max(0, min(limit, available))
+        if self.short_pages:
+            # A provider can answer a window with fewer items than the window holds. The page is
+            # short, but the collection is not over.
+            page = min(page, 5)
+        return [
+            SimpleNamespace(
+                id=str(offset + index),
+                name=f"Track {offset + index}",
+                artist=SimpleNamespace(id="artist-1", name="Artist"),
+                album=SimpleNamespace(id="album-1", name="Album", release_date="2014-05-05"),
+                duration=200,
+                explicit=False,
+                isrc=f"ISRC{offset + index}",
+            )
+            for index in range(page)
+        ]
+
+
+def playlist_session(playlist: CollectablePlaylist, *, title: str = "Fixture") -> SimpleNamespace:
+    node = SimpleNamespace(
+        id="playlist-1",
+        name=title,
+        description="Fixture playlist",
+        creator=SimpleNamespace(username="owner"),
+        num_tracks=playlist.total,
+        duration=playlist.total * 200,
+        created="2026-01-01",
+        last_updated="2026-01-02",
+        tracks=playlist.tracks,
+        items=playlist.tracks,
+        get_tracks_count=lambda: playlist.total,
+    )
+    return SimpleNamespace(playlist=lambda _identifier: node)
+
+
+def test_collect_playlist_tracks_walks_every_page() -> None:
+    playlist = CollectablePlaylist(120)
+    client = TidalClient(playlist_session(playlist))
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=500)
+
+    assert collected.count == 120
+    assert collected.truncated is False
+    assert collected.pages_fetched == 3
+    assert collected.max_items == 500
+    assert [item.id for item in collected.items][:2] == ["0", "1"]
+    assert playlist.requests == [(51, 0), (51, 50), (21, 100)]
+
+
+def test_collect_playlist_tracks_reports_the_cap_as_truncated() -> None:
+    playlist = CollectablePlaylist(200)
+    client = TidalClient(playlist_session(playlist))
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=75)
+
+    assert collected.count == 75
+    assert collected.truncated is True
+    assert collected.max_items == 75
+    assert len(collected.items) == 75
+
+
+def test_collect_playlist_tracks_keeps_walking_after_a_short_page() -> None:
+    playlist = CollectablePlaylist(120, short_pages=True)
+    client = TidalClient(playlist_session(playlist))
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=500)
+
+    # Every page comes back with 5 items instead of the requested 50. A walk that trusted page
+    # length alone would treat the first page as the end of the playlist; the exact counter keeps
+    # it advancing until the total is covered.
+    assert collected.pages_fetched == 3
+    assert [offset for _, offset in playlist.requests] == [0, 50, 100]
+    assert collected.count == 15
+    assert collected.truncated is False
+
+
+def test_collect_playlist_tracks_stops_on_a_stalled_cursor() -> None:
+    class Stalled(CollectablePlaylist):
+        def tracks(self, limit: int, offset: int) -> list[SimpleNamespace]:
+            del limit, offset
+            return [SimpleNamespace(id="only", name="Only", artist=None, album=None, duration=1)]
+
+    client = TidalClient(playlist_session(Stalled(1), title="Stalled"))
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=50)
+
+    assert collected.count == 1
+    assert collected.pages_fetched == 1
+
+
+def test_summarize_playlist_derives_metrics_and_duplicates() -> None:
+    playlist = CollectablePlaylist(6)
+    session = playlist_session(playlist, title="Fixture Summary")
+
+    def tracks(*, limit: int, offset: int) -> list[SimpleNamespace]:
+        del limit
+        if offset:
+            return []
+        return [
+            SimpleNamespace(
+                id=str(index),
+                name="Same Song" if index % 2 == 0 else f"Song {index}",
+                artist=SimpleNamespace(id="a-1", name="Repeat Artist"),
+                album=SimpleNamespace(id="al-1", name="Album", release_date="2011-01-01"),
+                duration=100,
+                explicit=index % 2 == 1,
+                isrc=None,
+            )
+            for index in range(6)
+        ]
+
+    session.playlist = lambda _identifier: SimpleNamespace(
+        id="playlist-1",
+        name="Fixture Summary",
+        description="d",
+        creator=SimpleNamespace(username="owner"),
+        num_tracks=6,
+        duration=600,
+        created="2026-01-01",
+        last_updated="2026-01-02",
+        tracks=tracks,
+        items=tracks,
+        get_tracks_count=lambda: 6,
+    )
+    client = TidalClient(session)
+
+    summary = client.summarize_playlist("playlist-1", max_items=100, top_artists=3)
+
+    assert summary.playlist_id == "playlist-1"
+    assert summary.title == "Fixture Summary"
+    assert summary.tracks_analyzed == 6
+    assert summary.truncated is False
+    assert summary.total_duration_seconds == 600
+    assert summary.distinct_artists == 1
+    assert summary.top_artists[0].artist == "Repeat Artist"
+    assert summary.top_artists[0].track_count == 6
+    assert summary.decade_counts == {"2010s": 6}
+    assert summary.explicit_tracks == 3
+    assert summary.tracks_without_release_date == 0
+    assert summary.duplicate_tracks[0].title == "Same Song"
+    assert summary.duplicate_tracks[0].occurrences == 3
+
+
+def test_summarize_playlist_counts_unparseable_release_dates() -> None:
+    def tracks(*, limit: int, offset: int) -> list[SimpleNamespace]:
+        del limit
+        if offset:
+            return []
+        return [
+            SimpleNamespace(
+                id="1",
+                name="No Date",
+                artist=SimpleNamespace(id="a", name="Artist"),
+                album=None,
+                duration=10,
+                explicit=True,
+                isrc=None,
+                release_date=None,
+            )
+        ]
+
+    session = SimpleNamespace(
+        playlist=lambda _identifier: SimpleNamespace(
+            id="p",
+            name="Untitled",
+            description="",
+            creator=None,
+            num_tracks=1,
+            duration=10,
+            created=None,
+            last_updated=None,
+            tracks=tracks,
+            items=tracks,
+            get_tracks_count=lambda: 1,
+        )
+    )
+    client = TidalClient(session)
+
+    summary = client.summarize_playlist("p", max_items=10, top_artists=1)
+
+    assert summary.tracks_analyzed == 1
+    assert summary.decade_counts == {}
+    assert summary.tracks_without_release_date == 1
+    assert summary.duplicate_tracks == []
+    assert summary.total_duration_seconds == 10
+
+
+def test_collect_playlist_tracks_without_a_counter_uses_the_page_signal() -> None:
+    class NoCounter(CollectablePlaylist):
+        def tracks(self, *, limit: int, offset: int) -> list[SimpleNamespace]:
+            self.requests.append((limit, offset))
+            available = self.total - offset
+            page = max(0, min(limit, available))
+            return [
+                SimpleNamespace(
+                    id=str(offset + index),
+                    name=f"Track {offset + index}",
+                    artist=None,
+                    album=None,
+                    duration=1,
+                    isrc=None,
+                )
+                for index in range(page)
+            ]
+
+    playlist = NoCounter(4)
+    session = playlist_session(playlist)
+    node = session.playlist("x")
+    del node.get_tracks_count  # TIDAL did not provide a counter
+    client = TidalClient(session)
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=100)
+
+    assert collected.count == 4
+    assert collected.truncated is False
+
+
+def test_collect_playlist_tracks_reports_a_failed_count() -> None:
+    playlist = CollectablePlaylist(3)
+    session = playlist_session(playlist)
+
+    def exploding_count() -> int:
+        raise RuntimeError("counter unavailable")
+
+    session.playlist("x").get_tracks_count = exploding_count
+    client = TidalClient(session)
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=100)
+
+    assert collected.count == 3
+
+
+def test_summarize_playlist_survives_a_missing_title() -> None:
+    playlist = CollectablePlaylist(2)
+    session = playlist_session(playlist)
+    node = session.playlist("x")
+
+    class NoName:
+        pass
+
+    session.playlist = lambda _identifier: SimpleNamespace(
+        tracks=node.tracks,
+        items=node.items,
+        get_tracks_count=node.get_tracks_count,
+    )
+    client = TidalClient(session)
+
+    summary = client.summarize_playlist("playlist-1", max_items=10, top_artists=1)
+
+    assert summary.title is None
+    assert summary.tracks_analyzed == 2
+    assert summary.distinct_artists == 1
+
+
+def test_collect_playlist_tracks_wraps_an_unexpected_upstream_failure() -> None:
+    class Exploding(CollectablePlaylist):
+        def tracks(self, *, limit: int, offset: int) -> list[SimpleNamespace]:
+            del limit, offset
+            raise RuntimeError("upstream detail that must not leak")
+
+    client = TidalClient(playlist_session(Exploding(1)))
+
+    with pytest.raises(TidalClientError) as caught:
+        client.collect_playlist_tracks("playlist-1", max_items=10)
+
+    assert "upstream detail" not in str(caught.value)
+
+
+def test_collect_playlist_tracks_handles_a_zero_width_window() -> None:
+    """A counter that shrinks below the cursor ends the walk instead of requesting an empty page."""
+
+    class Shrinking(CollectablePlaylist):
+        def tracks(self, *, limit: int, offset: int) -> list[SimpleNamespace]:
+            self.requests.append((limit, offset))
+            return []
+
+    playlist = Shrinking(10)
+    session = playlist_session(playlist)
+    # An empty playlist reports a total of zero, so the walk must not request a zero-width window.
+    session.playlist("x").get_tracks_count = lambda: 0
+    client = TidalClient(session)
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=100)
+
+    assert collected.count == 0
+    assert collected.pages_fetched == 0
+    assert collected.truncated is False
+
+
+def test_collect_playlist_tracks_stops_when_the_cursor_does_not_advance() -> None:
+    class Frozen(CollectablePlaylist):
+        def tracks(self, *, limit: int, offset: int) -> list[SimpleNamespace]:
+            del limit, offset
+            return [
+                SimpleNamespace(
+                    id="fixed",
+                    name="Fixed",
+                    artist=None,
+                    album=None,
+                    duration=1,
+                    isrc=None,
+                )
+            ]
+
+    playlist = Frozen(1)
+    session = playlist_session(playlist)
+    del session.playlist("x").get_tracks_count
+    client = TidalClient(session)
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=50)
+
+    assert collected.count == 1
+    assert collected.pages_fetched == 1
+
+
+def test_collect_playlist_tracks_without_a_counter_ends_on_the_last_page() -> None:
+    class Paged(CollectablePlaylist):
+        def tracks(self, *, limit: int, offset: int) -> list[SimpleNamespace]:
+            self.requests.append((limit, offset))
+            available = self.total - offset
+            page = max(0, min(limit, available))
+            return [
+                SimpleNamespace(
+                    id=str(offset + index),
+                    name=f"Track {offset + index}",
+                    artist=None,
+                    album=None,
+                    duration=1,
+                    isrc=None,
+                )
+                for index in range(page)
+            ]
+
+    playlist = Paged(3)
+    session = playlist_session(playlist)
+    del session.playlist("x").get_tracks_count
+    client = TidalClient(session)
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=2)
+
+    assert collected.count == 2
+    assert collected.truncated is True
+
+
+def test_collect_playlist_tracks_walks_two_windows_without_a_counter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without an exact counter the page signal must still allow a next window."""
+    client = TidalClient(playlist_session(CollectablePlaylist(5)))
+    track = Track(id="1", title="One", artist="A", url="https://tidal.com/browse/track/1")
+    pages = [
+        TrackPage(items=[track], count=1, limit=1, offset=0, has_more=True, next_offset=1),
+        TrackPage(items=[track], count=1, limit=1, offset=1, has_more=False, next_offset=None),
+    ]
+    monkeypatch.setattr(client, "_playlist_track_count", lambda _identifier: None)
+    monkeypatch.setattr(client, "get_playlist_tracks", lambda *_a, **_k: pages.pop(0))
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=50)
+
+    assert collected.count == 2
+    assert collected.pages_fetched == 2
+    assert collected.truncated is False
+
+
+def test_collect_playlist_tracks_stops_on_a_frozen_provider_cursor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cursor that never advances would loop forever without the defensive check."""
+    client = TidalClient(playlist_session(CollectablePlaylist(5)))
+    track = Track(id="1", title="One", artist="A", url="https://tidal.com/browse/track/1")
+    frozen = TrackPage(
+        items=[track],
+        count=1,
+        limit=1,
+        offset=0,
+        has_more=True,
+        next_offset=0,
+    )
+    monkeypatch.setattr(client, "_playlist_track_count", lambda _identifier: None)
+    monkeypatch.setattr(client, "get_playlist_tracks", lambda *_a, **_k: frozen)
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=50)
+
+    assert collected.count == 1
+    assert collected.pages_fetched == 1
+
+
+def test_collect_playlist_tracks_wraps_a_non_tidal_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = TidalClient(playlist_session(CollectablePlaylist(5)))
+
+    def explode(*_args: object, **_kwargs: object) -> None:
+        raise ValueError("raw upstream detail")
+
+    monkeypatch.setattr(client, "_playlist_track_count", lambda _identifier: None)
+    monkeypatch.setattr(client, "get_playlist_tracks", explode)
+
+    with pytest.raises(TidalClientError) as caught:
+        client.collect_playlist_tracks("playlist-1", max_items=10)
+
+    assert "raw upstream detail" not in str(caught.value)
+
+
+def test_collect_playlist_tracks_with_an_empty_playlist_skips_the_loop() -> None:
+    """An empty playlist has nothing to walk, so the loop body must never run."""
+    playlist = CollectablePlaylist(0)
+    client = TidalClient(playlist_session(playlist))
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=50)
+
+    assert collected.count == 0
+    assert collected.pages_fetched == 0
+    assert playlist.requests == []
+
+
+def test_collect_playlist_tracks_is_not_truncated_when_the_cap_lands_exactly_on_the_end() -> None:
+    """A cap that equals the playlist length is a complete result, not a truncated one."""
+    playlist = CollectablePlaylist(50)
+    client = TidalClient(playlist_session(playlist))
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=50)
+
+    assert collected.count == 50
+    assert collected.truncated is False
+
+
+def test_collect_playlist_tracks_is_truncated_when_a_capped_page_still_has_more() -> None:
+    """Without a counter, a full capped page that reports more work is a truncation."""
+    client = TidalClient(playlist_session(CollectablePlaylist(120)))
+    client.get_playlist_tracks = lambda *_a, **_k: TrackPage(  # type: ignore[method-assign]
+        items=[
+            Track(id=str(i), title=f"T{i}", artist="A", url=f"https://tidal.com/browse/track/{i}")
+            for i in range(2)
+        ],
+        count=2,
+        limit=2,
+        offset=0,
+        has_more=True,
+        next_offset=2,
+    )
+    client._playlist_track_count = lambda _identifier: None  # type: ignore[method-assign]
+
+    collected = client.collect_playlist_tracks("playlist-1", max_items=2)
+
+    assert collected.count == 2
+    assert collected.truncated is True
