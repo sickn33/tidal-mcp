@@ -5,7 +5,7 @@ All notable changes to TIDAL MCP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-10-07
 
 ### Added
 
@@ -20,6 +20,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
+- `urllib3` is now pinned to `>=2.8.0` and `PyJWT` is locked to `2.15.1`, closing a critical
+  PyJWT PEM-detection bypass, several high and medium PyJWT advisories, and two high urllib3
+  advisories that the previous dependency range still allowed.
 - `execute_read` no longer re-wraps a precise local validation message, such as an out-of-range
   category index, into the generic "try again" TIDAL error. An internal handler `KeyError` was
   also reported as an unsupported operation; only an unknown operation name now says that.
