@@ -26,6 +26,8 @@ EXPECTED_TOOLS = {
     "tidal_recommend_tracks",
     "tidal_collect_playlist_tracks",
     "tidal_summarize_playlist",
+    "tidal_compare_playlists",
+    "tidal_export_playlist",
     *(spec.name for spec in READ_TOOL_SPECS),
     *(spec.name for spec in MUTATION_TOOL_SPECS),
     "tidal_commit_action",
@@ -82,9 +84,16 @@ def test_lists_exact_tools_with_schemas_and_safety_annotations(tmp_path: Path) -
                 *(spec.name for spec in MUTATION_TOOL_SPECS),
                 "tidal_commit_action",
                 "tidal_commit_create_playlist",
+                "tidal_export_playlist",
             }:
                 assert tools[name].annotations is not None
                 assert tools[name].annotations.read_only_hint is True
+            # The export writes to local disk, so it must not claim to be read-only, and it must
+            # not claim to be destructive either: it never touches TIDAL or an existing file.
+            export = tools["tidal_export_playlist"].annotations
+            assert export is not None
+            assert export.read_only_hint is False
+            assert export.destructive_hint is False
             assert tools["tidal_preview_create_playlist"].annotations.destructive_hint is False
             assert tools["tidal_commit_action"].annotations.destructive_hint is True
             assert tools["tidal_commit_create_playlist"].annotations.idempotent_hint is True
@@ -507,5 +516,75 @@ def test_collection_tools_surface_client_failures_as_safe_tool_errors(tmp_path: 
             )
             assert summary.is_error is True
             assert "safe collection failure" in summary.content[0].text
+
+    asyncio.run(scenario())
+
+
+def test_compare_and_export_are_exposed_through_the_mcp_contract(tmp_path: Path) -> None:
+    runtime, _ = make_runtime(tmp_path)
+
+    async def scenario() -> None:
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            comparison = await client.call_tool(
+                "tidal_compare_playlists",
+                {"left_playlist_id": "playlist-1", "right_playlist_id": "playlist-2"},
+            )
+            assert comparison.is_error is False
+            assert comparison.structured_content["shared_count"] == 1
+
+            exported = await client.call_tool(
+                "tidal_export_playlist", {"playlist_id": "playlist-1", "format": "m3u"}
+            )
+            assert exported.is_error is False
+            assert exported.structured_content["format"] == "m3u"
+            path = Path(exported.structured_content["path"])
+            assert path.exists()
+            assert path.stat().st_mode & 0o777 == 0o600
+            assert path.read_text(encoding="utf-8").startswith("#EXTM3U")
+            # A second export with the same name must not silently replace the first.
+            repeated = await client.call_tool(
+                "tidal_export_playlist", {"playlist_id": "playlist-1", "format": "m3u"}
+            )
+            assert repeated.is_error is True
+            assert "already exists" in repeated.content[0].text
+
+    asyncio.run(scenario())
+
+
+def test_compare_and_export_surface_failures_as_safe_tool_errors(tmp_path: Path) -> None:
+    runtime, fake = make_runtime(tmp_path)
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        raise TidalClientError("safe comparison failure")
+
+    async def scenario() -> None:
+        fake.compare_playlists = fail
+        fake.playlist_title = fail
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            comparison = await client.call_tool(
+                "tidal_compare_playlists",
+                {"left_playlist_id": "a", "right_playlist_id": "b"},
+            )
+            assert comparison.is_error is True
+            assert "safe comparison failure" in comparison.content[0].text
+
+    asyncio.run(scenario())
+
+
+def test_export_falls_back_when_the_title_is_unavailable(tmp_path: Path) -> None:
+    runtime, fake = make_runtime(tmp_path)
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        raise TidalClientError("title unavailable")
+
+    async def scenario() -> None:
+        fake.playlist_title = fail
+        async with Client(create_server(runtime), raise_exceptions=True) as client:
+            exported = await client.call_tool(
+                "tidal_export_playlist", {"playlist_id": "playlist-1", "format": "json"}
+            )
+            assert exported.is_error is False
+            assert Path(exported.structured_content["path"]).name == "tidal-playlist.json"
+            assert exported.structured_content["title"] is None
 
     asyncio.run(scenario())

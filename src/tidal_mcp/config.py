@@ -37,6 +37,7 @@ class Settings:
 
     data_dir: Path
     session_file: Path
+    export_dir: Path | None = None
     writes_enabled: bool = False
     draft_ttl_seconds: int = 900
 
@@ -52,9 +53,11 @@ class Settings:
         session_file = (
             Path(session_value).expanduser() if session_value else data_dir / "session.json"
         )
+        export_value = os.environ.get("TIDAL_MCP_EXPORT_DIR")
         return cls(
             data_dir=data_dir,
             session_file=session_file,
+            export_dir=Path(export_value).expanduser() if export_value else None,
             writes_enabled=_env_bool("TIDAL_MCP_ENABLE_WRITES"),
             draft_ttl_seconds=_env_int(
                 "TIDAL_MCP_DRAFT_TTL_SECONDS",
@@ -67,6 +70,16 @@ class Settings:
     @property
     def draft_dir(self) -> Path:
         return self.data_dir / "drafts"
+
+    @property
+    def resolved_export_dir(self) -> Path:
+        """Where playlist exports are written.
+
+        Defaults to a subdirectory of the private data directory so an export never lands in the
+        repository or in a shared temporary location. An operator can point it elsewhere, but the
+        server only ever writes inside the resolved directory.
+        """
+        return self.export_dir or (self.data_dir / "exports")
 
 
 def ensure_private_directory(path: Path) -> Path:

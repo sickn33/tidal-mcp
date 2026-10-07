@@ -9,6 +9,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+- `tidal_export_playlist` writes a playlist to JSON or M3U inside the private export directory. It
+  is the only tool that writes to local disk, so it is annotated as not read-only. It refuses to
+  overwrite an existing file, sanitizes the requested name to a single path segment, and writes
+  through a temporary file. Set `TIDAL_MCP_EXPORT_DIR` to place exports elsewhere.
+- `tidal_compare_playlists` reports the shared, left-only, and right-only tracks of two playlists,
+  matching on the normalized title and artist pair. TIDAL serves distinct ids for the same
+  recording across releases, so comparing ids would report a shared song as two different ones.
 - Two read tools that remove the pagination loop from the caller. `tidal_collect_playlist_tracks`
   walks a playlist's pages until the end or an explicit cap and reports `truncated`, so a capped
   result is never mistaken for a complete playlist. `tidal_summarize_playlist` derives duration,

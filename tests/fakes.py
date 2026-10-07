@@ -10,7 +10,9 @@ from tidal_mcp.models import (
     ArtistShare,
     CatalogResult,
     CollectedTracks,
+    CollectionComparison,
     CommitPlaylistResult,
+    ComparisonEntry,
     MutationResult,
     Playlist,
     PlaylistPage,
@@ -187,6 +189,31 @@ class FakeMusicClient:
             tracks_without_release_date=0,
             duplicate_tracks=[],
         )
+
+    def compare_playlists(
+        self, left_playlist_id: str, right_playlist_id: str, max_items: int
+    ) -> CollectionComparison:
+        del max_items
+        return CollectionComparison(
+            left_playlist_id=left_playlist_id,
+            right_playlist_id=right_playlist_id,
+            left_title="Left",
+            right_title="Right",
+            left_track_count=2,
+            right_track_count=1,
+            max_items=500,
+            truncated=False,
+            shared_count=1,
+            left_only_count=1,
+            right_only_count=0,
+            shared=[ComparisonEntry(title="Shared", artist="Band", left_track_ids=["1"])],
+            left_only=[ComparisonEntry(title="Left Only", artist="A", left_track_ids=["2"])],
+            right_only=[],
+        )
+
+    def playlist_title(self, playlist_id: str) -> str:
+        del playlist_id
+        return "Fixture Playlist"
 
     def get_track_radio(self, track_id: str, limit: int) -> list[Track]:
         radios = {

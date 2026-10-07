@@ -6,8 +6,8 @@ handwritten workflow tools in `src/tidal_mcp/server.py`.
 
 ## Coverage result
 
-- 119 MCP tools with input and output schemas.
-- 81 read-only tools.
+- 121 MCP tools with input and output schemas.
+- 83 read-only tools.
 - 36 exact local mutation-preview tools.
 - 2 approval-token commit tools.
 - 100% statement and branch test coverage, enforced by `fail_under = 100`.
@@ -55,7 +55,8 @@ enumerated class.
 | Mixes | Legacy and v2 metadata/images plus paginated mix items for both mix generations |
 | Discovery pages | Home, Explore, For You, genre hubs, hi-res, local genres, mixes, moods, videos |
 | Editorial navigation | Category items, section links, show-more/view-all expansion, and opening a page link |
-| Derived analysis | Full-playlist collection with an explicit cap, and a deterministic playlist summary (duration, top artists, decades, explicit count, duplicates) |
+| Derived analysis | Full-playlist collection with an explicit cap, a deterministic playlist summary (duration, top artists, decades, explicit count, duplicates), and a set comparison of two playlists |
+| Local export | A playlist written to JSON or M3U inside the private export directory, never overwriting an existing file |
 | Genres | Complete genre list and paginated tracks, albums, artists, playlists, or videos by genre |
 | Folders | Folder metadata and paginated contents |
 | Recommendations | Multi-seed Track Radio, deduplication, provenance, deterministic metadata filters |
@@ -123,6 +124,20 @@ truncated one, so the last page of such a walk can come back empty. An empty pag
 never an end-of-walk signal on these surfaces either; `has_more` is the only authoritative one.
 `tidal_list_favorite_playlists` additionally carries its exact collection counter, so its cursor
 does not rely on the clamped signal alone.
+
+## Local export
+
+`tidal_export_playlist` is the only tool that writes to local disk, so it is annotated as not
+read-only rather than pretending to be a pure read. Its bounds: the target directory is fixed by
+configuration and defaults to a subdirectory of the private data directory, a caller-supplied name
+is reduced to a single safe path segment, an existing file is refused rather than replaced, and the
+content is written through a temporary file so a reader never sees a partial export. The export
+holds public metadata and TIDAL URLs only, because the project never downloads media.
+
+`tidal_compare_playlists` matches tracks on the normalized title and artist pair rather than on
+track id. TIDAL serves distinct ids for the same recording across releases, so comparing ids would
+report a shared song as two different ones. Its counts are over distinct matches, so a track
+duplicated inside one playlist does not inflate a result.
 
 ## Built-in prompts
 

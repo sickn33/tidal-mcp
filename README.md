@@ -13,7 +13,7 @@
 **TIDAL MCP** connects Codex, Claude Desktop, Claude Code, Cursor, and other
 stdio-compatible Model Context Protocol clients to a TIDAL account. Search the catalog,
 analyze playlists, discover music, read lyrics, manage favorites, organize folders,
-and safely create or edit playlists through **119 typed MCP tools**.
+and safely create or edit playlists through **121 typed MCP tools**.
 
 > **Positioning:** in the September 4, 2026 review, this was the most complete public TIDAL MCP
 > implementation found in a reproducible review of the current GitHub landscape. The claim is
@@ -28,7 +28,7 @@ Most TIDAL integrations expose a small selection of search and playlist commands
 built as a complete local control surface for AI agents while keeping credentials and approvals
 on your machine.
 
-- **119 discoverable tools:** 81 reads, 36 mutation previews, and 2 approval-token commits.
+- **121 discoverable tools:** 83 reads, 36 mutation previews, and 2 approval-token commits.
 - **Broad account coverage:** catalog, editorial pages, recommendations, lyrics, favorites,
   playlists, folders, mixes, images, and playback metadata.
 - **Safe writes:** mutations are off by default and always require preview → explicit approval →
@@ -61,7 +61,9 @@ See [real-world workflows and prompt examples](docs/USE_CASES.md).
 | --- | ---: | --- |
 | Authentication, search, recommendations | 3 | status, multi-type search, deterministic multi-seed recommendations |
 | Catalog, editorial, discovery | 54 | tracks, albums, artists, videos, lyrics, genres, Home, Explore, For You |
-| Collection, playlists, folders | 24 | favorites, counts, playlist items, full-playlist collection, summaries, owned/public playlists, folders, mixes |
+| Collection, playlists, folders | 24 | favorites, counts, playlist items, owned/public playlists, folders, mixes |
+| Collection analysis | 2 | full-playlist collection, playlist summary and comparison |
+| Local export | 1 | playlist to JSON or M3U in the private export directory |
 | Built-in prompts | 4 | playlist-from-description, playlist review, discovery digest, library audit |
 | Exact mutation previews | 36 | playlist CRUD, item moves, visibility, favorites, folders |
 | Approval-token commits | 2 | universal commit and compatible playlist-creation alias |
@@ -173,6 +175,7 @@ an unrestricted private-endpoint proxy.
 | `TIDAL_MCP_DATA_DIR` | OS application-data directory | Session and draft root |
 | `TIDAL_MCP_SESSION_FILE` | `<data-dir>/session.json` | Override the OAuth session path |
 | `TIDAL_MCP_DRAFT_TTL_SECONDS` | `900` | Approval lifetime, between 60 and 3600 seconds |
+| `TIDAL_MCP_EXPORT_DIR` | `<data-dir>/exports` | Where `tidal_export_playlist` writes; created privately |
 
 New private directories use mode `0700` and sensitive files use `0600` on systems supporting POSIX
 permissions. Existing custom parent directories are never silently permission-rewritten.
@@ -190,7 +193,7 @@ uv build
 
 The coverage gate is **100% for statements and branches**. Tests exercise every registered read
 and mutation route through the MCP schemas and the pinned `tidalapi` adapter without contacting
-TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 119 tool
+TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 121 tool
 schemas.
 
 Official releases are published from GitHub Actions through npm Trusted Publishing, with no
