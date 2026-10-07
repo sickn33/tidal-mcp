@@ -4,7 +4,7 @@
 
 Canonical repository: https://github.com/sickn33/tidal-mcp
 License: MIT
-Current version: 1.2.0
+Current version: 1.3.0
 Transport: local stdio
 Language: Python 3.11-3.13
 npm package: @sickn33/tidal-mcp

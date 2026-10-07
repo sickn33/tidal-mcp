@@ -5,7 +5,7 @@ All notable changes to TIDAL MCP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.0] - 2026-10-07
+## [1.3.0] - 2026-10-07
 
 ### Added
 
@@ -16,6 +16,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `tidal_compare_playlists` reports the shared, left-only, and right-only tracks of two playlists,
   matching on the normalized title and artist pair. TIDAL serves distinct ids for the same
   recording across releases, so comparing ids would report a shared song as two different ones.
+
+### Fixed
+
+- `playlist_title` returned the formatter's `Untitled Playlist` placeholder for a nameless
+  playlist, which would have become an exported file name. It now reports `None` so an export
+  falls back to a neutral name instead of inventing one.
+- The smoke test's own expected-tool list had fallen behind, so the packaged check would have
+  passed while ignoring newly registered tools. A test now asserts both tool lists agree.
+
+### Documentation
+
+- The coverage contract stated the server was built from "six handwritten workflow tools" and
+  asserted 100% `tidalapi` coverage without listing what it excluded. It now names all 70
+  exclusions in six groups whose sizes are derived from the surface test.
+
+## [1.2.0] - 2026-10-07
+
+### Added
+
 - Two read tools that remove the pagination loop from the caller. `tidal_collect_playlist_tracks`
   walks a playlist's pages until the end or an explicit cap and reports `truncated`, so a capped
   result is never mistaken for a complete playlist. `tidal_summarize_playlist` derives duration,
@@ -27,10 +46,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Fixed
 
-- The coverage contract said the server was built from "six handwritten workflow tools"; there are
-  now ten. It also asserted 100% coverage of the `tidalapi` surface without listing what the claim
-  excluded. It now states the real counts and accounts for all 70 exclusions in six groups whose
-  sizes are checked against the surface test, so the bound on "complete" is auditable.
 - The README, coverage contract, registry metadata, landing page, and llms files claimed a
   `credits` capability that does not exist. TIDAL exposes no credits endpoint and `tidalapi`'s
   `artist_roles` field stays `None` on real tracks, so the wording now lists only lyrics.
