@@ -217,10 +217,15 @@ class TidalClient:
                 if SearchType.PLAYLISTS in requested
                 else []
             )
+            videos = (
+                [public_item(item) for item in _search_bucket(result, "videos")]
+                if SearchType.VIDEOS in requested
+                else []
+            )
         except Exception as exc:
             self._raise_operation_error("search the catalog", exc)
 
-        has_more = any(len(items) > limit for items in (tracks, albums, artists, playlists))
+        has_more = any(len(items) > limit for items in (tracks, albums, artists, playlists, videos))
         return SearchResponse(
             query=query,
             limit=limit,
@@ -229,6 +234,7 @@ class TidalClient:
             albums=albums[:limit],
             artists=artists[:limit],
             playlists=playlists[:limit],
+            videos=videos[:limit],
             has_more=has_more,
             next_offset=offset + limit if has_more else None,
         )
@@ -406,6 +412,98 @@ class TidalClient:
         }[params["kind"]]
         return self._slice(genre.items(model), params["limit"], params["offset"])
 
+    @staticmethod
+    def _page_categories(page: Any) -> list[Any]:
+        return [category for category in page.categories or [] if category is not None]
+
+    def _page_category(self, params: dict[str, Any]) -> Any:
+        page = self._browse_page(params["page"])
+        categories = self._page_categories(page)
+        index = params["category_index"]
+        if index >= len(categories):
+            raise TidalClientError(
+                f"Page {params['page']!r} has no category at index {index}; "
+                f"it exposes {len(categories)}."
+            )
+        return categories[index]
+
+    def _browse_page(self, page: str) -> Any:
+        pages = {
+            "home": self.session.home,
+            "explore": self.session.explore,
+            "for_you": self.session.for_you,
+            "genres": self.session.genres,
+            "hires": self.session.hires_page,
+            "local_genres": self.session.local_genres,
+            "mixes": self.session.mixes,
+            "moods": self.session.moods,
+            "videos": self.session.videos,
+        }
+        loader = pages.get(page)
+        if loader is None:
+            raise TidalClientError(f"Unsupported editorial page: {page}")
+        return loader()
+
+    def _page_category_items(self, params: dict[str, Any]) -> list[Any]:
+        """Page through the concrete items of one editorial page category.
+
+        Page categories store a mix of lazy `PageItem` wrappers and concrete catalog objects.
+        Only the lazy `PageItem` wrappers are resolved, so a concrete object that happens to expose
+        an unrelated `get()` is never called by accident, and the slice is taken before resolution
+        so a page never dereferences more items than asked.
+        """
+        category = self._page_category(params)
+        raw = self._slice(
+            list(_sequence(getattr(category, "items", None))),
+            params["limit"],
+            params["offset"],
+        )
+        return [item.get() if type(item).__name__ == "PageItem" else item for item in raw]
+
+    def _page_links(self, params: dict[str, Any]) -> list[Any]:
+        return self._slice(
+            list(_sequence(getattr(self._page_category(params), "items", None))),
+            params["limit"],
+            params["offset"],
+        )
+
+    def _show_more(self, params: dict[str, Any]) -> Any:
+        """Load the "show more" or "view all" page for one editorial category.
+
+        Both page generations expose their follow-up endpoint as a private `_more` record with an
+        `api_path`. The version-1 `show_more()` helper and the version-2 `view_all()` helper both
+        reach the same endpoint, but `view_all()` on `tidalapi 0.8.11` calls a `Session.view_all`
+        method that does not exist, so the endpoint is loaded directly for both generations.
+        """
+        category = self._page_category(params)
+        more = getattr(category, "_more", None)
+        api_path = getattr(more, "api_path", None)
+        if not api_path:
+            raise TidalClientError(
+                f"Category {params['category_index']} on page {params['page']!r} has no "
+                "further items."
+            )
+        return self.session.page.get(api_path)
+
+    def _mix_v2_items(self, params: dict[str, Any]) -> list[Any]:
+        """Page through the tracks and videos of one current-generation mix.
+
+        `tidalapi 0.8.11` fills `MixV2._items` while retrieving the mix but exposes no public
+        accessor, unlike the legacy `Mix.items()`. The slice is applied before any wrapper is
+        resolved, so a request never dereferences more items than it asked for.
+        """
+        items = list(_sequence(getattr(self.session.mixv2(params["mix_id"]), "_items", None)))
+        raw = self._slice(items, params["limit"], params["offset"])
+        return [item.get() if type(item).__name__ == "PageItem" else item for item in raw]
+
+    def _open_page_link(self, params: dict[str, Any]) -> Any:
+        links = self._page_links({**params, "limit": 1, "offset": params["link_index"]})
+        if not links:
+            raise TidalClientError(
+                f"Page {params['page']!r} has no link at index {params['link_index']}."
+            )
+        return links[0].get()
+
     def execute_read(self, operation: str, params: dict[str, Any]) -> CatalogResult:
         """Execute one allowlisted read operation and return a stable public envelope."""
         p = params
@@ -529,6 +627,7 @@ class TidalClient:
             ),
             "tidal_get_user_image": lambda: s.user.image(p["dimensions"]),
             "tidal_get_mix_items": lambda: page(s.mix(p["mix_id"]).items()),
+            "tidal_get_mix_v2_items": lambda: self._mix_v2_items(p),
             "tidal_get_mix_image": lambda: s.mix(p["mix_id"]).image(p["dimensions"]),
             "tidal_get_mix_v2_image": lambda: s.mixv2(p["mix_id"]).image(p["dimensions"]),
             "tidal_browse_home": lambda: s.home(),
@@ -540,6 +639,10 @@ class TidalClient:
             "tidal_browse_mixes": lambda: s.mixes(),
             "tidal_browse_moods": lambda: s.moods(),
             "tidal_browse_videos": lambda: s.videos(),
+            "tidal_list_page_category_items": lambda: self._page_category_items(p),
+            "tidal_list_page_links": lambda: self._page_links(p),
+            "tidal_show_more_page_category": lambda: self._show_more(p),
+            "tidal_open_page_link": lambda: self._open_page_link(p),
             "tidal_list_genres": lambda: page(s.genre.get_genres()),
             "tidal_get_genre_items": lambda: self._genre_items(p),
             "tidal_get_folder": lambda: s.folder(p["folder_id"]),
@@ -547,10 +650,14 @@ class TidalClient:
                 offset=p["offset"], limit=p["limit"] + 1
             ),
         }
+        handler = handlers.get(operation)
+        if handler is None:
+            raise TidalClientError(f"Unsupported read operation: {operation}")
         try:
-            value = handlers[operation]()
-        except KeyError as exc:
-            raise TidalClientError(f"Unsupported read operation: {operation}") from exc
+            value = handler()
+        except TidalClientError:
+            # Local validation failures already carry a precise, safe message.
+            raise
         except Exception as exc:
             self._raise_operation_error(operation.replace("tidal_", "").replace("_", " "), exc)
         warnings = []

@@ -172,8 +172,13 @@ SURFACE: dict[type[object], tuple[set[str], set[str]]] = {
         {"parse"},
     ),
     tidalapi.genre.Genre: ({"get_genres", "items"}, {"parse_genre", "parse_genres"}),
-    tidalapi.page.Page: (set(), {"get", "next", "parse"}),
+    tidalapi.page.Page: ({"get"}, {"next", "parse"}),
     tidalapi.page.PageCategory: (set(), {"parse", "show_more"}),
+    tidalapi.page.PageCategoryV2: (
+        set(),
+        {"parse", "parse_item", "register_subclass", "view_all"},
+    ),
+    tidalapi.page.PageLink: ({"get"}, set()),
     tidalapi.media.Lyrics: (set(), {"parse"}),
     tidalapi.media.Stream: (
         {"get_audio_resolution"},
