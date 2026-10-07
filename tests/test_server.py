@@ -246,6 +246,9 @@ def _required_arguments(spec: object) -> dict[str, Any]:
         "item_trns": ["trn:playlist:playlist-1"],
         "media_ids": ["track-1"],
         "kind": "tracks",
+        "page": "home",
+        "category_index": 0,
+        "link_index": 0,
     }
     arguments: dict[str, Any] = {}
     for parameter in spec.params:

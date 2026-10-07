@@ -87,6 +87,59 @@ class GenreNode(Node):
         return [Node("genre-result-1"), Node("genre-result-2")]
 
 
+def tidalapi_named(class_name: str):
+    """Build a fixture whose class name matches the real tidalapi class.
+
+    Both the client and the formatter dispatch on `type(item).__name__`, so a fixture only
+    exercises the real branch when it carries the upstream class name.
+    """
+
+    def get(self: Node) -> Node:
+        return Node("resolved-page-item")
+
+    return type(class_name, (Node,), {"get": get})
+
+
+PageItemNode = tidalapi_named("PageItem")
+
+
+class CategoryNode(Node):
+    def __init__(self, *, with_more: bool = True) -> None:
+        super().__init__("category-1")
+        self.items = [PageItemNode("page-item-1"), Node("concrete-1")]
+        self._more = SimpleNamespace(api_path="pages/more") if with_more else None
+
+
+class EditorialPageNode(Node):
+    def __init__(self, identifier: str = "page-1", *, with_more: bool = True) -> None:
+        super().__init__(identifier)
+        self.title = "Fixture editorial page"
+        self.categories = [CategoryNode(with_more=with_more)]
+
+
+PageLinkNode = tidalapi_named("PageLink")
+
+
+def linked_page(identifier: str = "linked-page") -> Node:
+    """A fixture whose class name matches tidalapi's Page, so it serialises as a page."""
+    page = tidalapi_named("Page")(identifier)
+    page.title = "Fixture editorial page"
+    page.categories = []
+    return page
+
+
+def link_list_page() -> EditorialPageNode:
+    page = EditorialPageNode("link-list")
+    link = PageLinkNode("page-link-1")
+    link.title = "Fixture link"
+    link.api_path = "pages/rock"
+    link.get = linked_page
+    category = Node("link-category")
+    category.items = [link]
+    page.categories = [category]
+    return page
+
+
 class UniversalFavorites(Node):
     def get_genres(self) -> list[GenreNode]:
         return [GenreNode(path="rock")]
@@ -134,6 +187,7 @@ class UniversalSession(Node):
         super().__init__("session")
         self.user = UniversalUser()
         self.genre = UniversalFavorites()
+        self.page = SimpleNamespace(get=lambda api_path: EditorialPageNode(api_path))
 
     def track(self, track_id: str, **_kwargs: object) -> Node:
         return Node(track_id)
@@ -180,7 +234,7 @@ class UniversalSession(Node):
             "moods",
             "videos",
         }:
-            return lambda: Node(name)
+            return lambda: EditorialPageNode(name)
         return super().__getattr__(name)
 
 
@@ -199,6 +253,9 @@ def arguments(spec: object) -> dict[str, Any]:
         "media_ids": ["track-1"],
         "kind": "tracks",
         "genre_path": "rock",
+        "page": "home",
+        "category_index": 0,
+        "link_index": 0,
     }
     result: dict[str, Any] = {}
     for parameter in spec.params:
@@ -236,6 +293,96 @@ def test_adapter_rejects_unknown_operations_without_leaking_details() -> None:
         client.execute_read("tidal_unknown", {})
     with pytest.raises(TidalClientError, match="Unsupported mutation action"):
         client.execute_mutation("unknown", {})
+
+
+def test_editorial_navigation_rejects_out_of_range_targets() -> None:
+    session = UniversalSession()
+    client = TidalClient(session)
+
+    with pytest.raises(TidalClientError, match="no category at index 9"):
+        client.execute_read(
+            "tidal_list_page_category_items",
+            {"page": "home", "category_index": 9, "limit": 2, "offset": 0},
+        )
+
+    session.home = lambda: EditorialPageNode("home", with_more=False)
+    with pytest.raises(TidalClientError, match="has no further items"):
+        client.execute_read(
+            "tidal_show_more_page_category",
+            {"page": "home", "category_index": 0},
+        )
+
+    session.home = lambda: link_list_page()
+    with pytest.raises(TidalClientError, match="no link at index 4"):
+        client.execute_read(
+            "tidal_open_page_link",
+            {"page": "home", "category_index": 0, "link_index": 4},
+        )
+
+
+def test_editorial_browse_rejects_an_unknown_page() -> None:
+    session = UniversalSession()
+    client = TidalClient(session)
+
+    with pytest.raises(TidalClientError, match="Unsupported editorial page"):
+        client.execute_read(
+            "tidal_list_page_category_items",
+            {"page": "unknown", "category_index": 0, "limit": 2, "offset": 0},
+        )
+
+
+def test_page_category_items_resolve_lazy_items_and_skip_empty_categories() -> None:
+    session = UniversalSession()
+    page = Node("home")
+    page.categories = [None, CategoryNode(with_more=False)]
+    session.home = lambda: page
+    client = TidalClient(session)
+
+    items = client.execute_read(
+        "tidal_list_page_category_items",
+        {"page": "home", "category_index": 0, "limit": 5, "offset": 0},
+    )
+    assert [item.id for item in items.items] == ["resolved-page-item", "concrete-1"]
+
+    with pytest.raises(TidalClientError, match="has no further items"):
+        client.execute_read(
+            "tidal_show_more_page_category",
+            {"page": "home", "category_index": 0},
+        )
+
+
+def test_page_links_are_paged_and_openable() -> None:
+    session = UniversalSession()
+    session.home = lambda: link_list_page()
+    client = TidalClient(session)
+
+    links = client.execute_read(
+        "tidal_list_page_links",
+        {"page": "home", "category_index": 0, "limit": 10, "offset": 0},
+    )
+    assert [item.id for item in links.items] == ["pages/rock"]
+    assert links.items[0].type == "page_link"
+
+    opened = client.execute_read(
+        "tidal_open_page_link",
+        {"page": "home", "category_index": 0, "link_index": 0},
+    )
+    assert opened.item.title == "Fixture editorial page"
+
+
+def test_mix_v2_items_resolve_lazy_wrappers() -> None:
+    session = UniversalSession()
+    mix = Node("mix-v2-1")
+    mix._items = [PageItemNode("page-item"), Node("concrete-track")]
+    session.mixv2 = lambda _identifier: mix
+    client = TidalClient(session)
+
+    page = client.execute_read(
+        "tidal_get_mix_v2_items",
+        {"mix_id": "mix-v2-1", "limit": 1, "offset": 0},
+    )
+    assert [item.id for item in page.items] == ["resolved-page-item"]
+    assert page.limit == 1
 
 
 def test_create_playlist_action_adds_nonempty_track_list() -> None:

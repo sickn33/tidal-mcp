@@ -7,8 +7,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+- Editorial page navigation through four new read tools: `tidal_list_page_category_items`,
+  `tidal_list_page_links`, `tidal_show_more_page_category`, and `tidal_open_page_link`. The browse
+  tools previously returned only the first screen of a page, because nothing could follow a
+  category's show-more endpoint or open a page link.
+- `tidal_get_mix_v2_items` pages through the tracks and videos of a current-generation mix, which
+  `tidalapi 0.8.11` stores privately and exposes only for legacy mixes.
+- Video results in `tidal_search` through the new `videos` media type, and the International
+  Standard Recording Code as an `isrc` field on every returned track.
+
 ### Fixed
 
+- `execute_read` no longer re-wraps a precise local validation message, such as an out-of-range
+  category index, into the generic "try again" TIDAL error. An internal handler `KeyError` was
+  also reported as an unsupported operation; only an unknown operation name now says that.
 - Favorite track, album, artist, playlist, and video listings no longer stop after the first page
   when TIDAL returns a short page. Favorite mixes keep the previous behaviour, as `tidalapi`
   exposes no mix counter.
@@ -38,7 +52,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Added
 
 - npm distribution as `@sickn33/tidal-mcp` and official MCP Registry metadata.
-- Complete 112-tool MCP surface covering the pinned `tidalapi 0.8.11` user-facing application API.
+- Complete 117-tool MCP surface covering the pinned `tidalapi 0.8.11` user-facing application API.
 - Structured input and output schemas plus MCP safety annotations for every tool.
 - Catalog, editorial, discovery, lyrics, favorites, playlist, folder, mix, image, and playback
   metadata reads.

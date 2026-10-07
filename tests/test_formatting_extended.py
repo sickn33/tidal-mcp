@@ -76,6 +76,59 @@ def test_public_item_allowlist_handles_extended_objects_and_nested_values() -> N
     assert public_item(SimpleNamespace(id="x")).type == "simplenamespace"
 
 
+def test_public_item_formats_page_links_and_page_items() -> None:
+    link = object_named(
+        "PageLink",
+        title="Browse Rock",
+        icon="genre",
+        api_path="pages/rock",
+        image_id="image-1",
+    )
+    formatted_link = public_item(link)
+    assert formatted_link.type == "page_link"
+    assert formatted_link.id == "pages/rock"
+    assert formatted_link.title == "Browse Rock"
+    assert formatted_link.details == {"icon": "genre", "image_id": "image-1"}
+
+    item = object_named(
+        "PageItem",
+        header="Featured",
+        short_header="Featured",
+        short_sub_header="Today",
+        type="ALBUM",
+        artifact_id="album-1",
+        text="Editorial text",
+        featured=True,
+    )
+    formatted_item = public_item(item)
+    assert formatted_item.type == "page_item"
+    assert formatted_item.id == "album-1"
+    assert formatted_item.title == "Featured"
+    assert formatted_item.details["type"] == "ALBUM"
+    assert formatted_item.details["featured"] is True
+
+
+def test_page_categories_advertise_an_available_show_more_flow() -> None:
+    with_more = object_named(
+        "ItemList",
+        type="ALBUM_LIST",
+        title="Albums",
+        description="",
+        items=[],
+        _more=SimpleNamespace(api_path="pages/more"),
+    )
+    without_more = object_named(
+        "ItemList",
+        type="ALBUM_LIST",
+        title="Albums",
+        description="",
+        items=[],
+        _more=None,
+    )
+    assert public_item(with_more).details["show_more_available"] is True
+    assert "show_more_available" not in public_item(without_more).details
+
+
 def test_safe_json_covers_scalars_dates_collections_dataclasses_and_depth() -> None:
     @dataclass
     class Fixture:

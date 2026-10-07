@@ -39,7 +39,7 @@ async def smoke() -> None:
         async with Client(parameters, raise_exceptions=True) as client:
             listed = await client.list_tools()
             names = {tool.name for tool in listed.tools}
-            if names != EXPECTED_TOOLS or len(names) != 112:
+            if names != EXPECTED_TOOLS or len(names) != 117:
                 raise RuntimeError(f"Unexpected tool set: {sorted(names)}")
             auth = await client.call_tool("tidal_auth_status", {})
             if auth.is_error or auth.structured_content is None:

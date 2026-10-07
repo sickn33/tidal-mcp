@@ -53,6 +53,7 @@ def format_track(item: Any, *, source_seed_ids: list[str] | None = None) -> Trac
         duration_seconds=_value(item, "duration"),
         explicit=_value(item, "explicit"),
         release_date=_text(release_date),
+        isrc=_text(_value(item, "isrc")),
         url=f"https://tidal.com/browse/track/{track_id}",
         source_seed_ids=source_seed_ids or [],
     )
@@ -113,8 +114,14 @@ _PUBLIC_FIELDS: dict[str, tuple[str, ...]] = {
         "duration",
         "explicit",
         "quality",
+        "video_quality",
         "release_date",
         "image_id",
+        "image_path",
+        "cover",
+        "vibrant_color",
+        "ads_pre_paywall_only",
+        "ads_url",
     ),
     "Mix": ("id", "title", "sub_title", "short_subtitle", "mix_type", "images"),
     "MixV2": (
@@ -149,6 +156,7 @@ _PUBLIC_FIELDS: dict[str, tuple[str, ...]] = {
     ),
     "Page": ("title", "categories"),
     "ItemList": ("type", "title", "description", "items"),
+    "ItemHeader": ("items",),
     "TrackList": ("type", "title", "subtitle", "description", "items"),
     "ShortcutList": ("type", "title", "subtitle", "description", "items"),
     "HorizontalList": ("type", "title", "subtitle", "description", "items"),
@@ -192,6 +200,28 @@ def _safe_json(value: Any, *, depth: int = 0) -> Any:
 def public_item(item: Any, *, depth: int = 0) -> PublicItem:
     """Format supported tidalapi objects using a strict public-field allowlist."""
     class_name = type(item).__name__
+    if class_name == "PageLink":
+        return PublicItem(
+            type="page_link",
+            id=_text(_value(item, "api_path")),
+            title=_text(_value(item, "title")),
+            details={
+                field: _safe_json(_value(item, field), depth=depth + 1)
+                for field in ("icon", "image_id")
+                if _value(item, field) is not None
+            },
+        )
+    if class_name == "PageItem":
+        return PublicItem(
+            type="page_item",
+            id=_text(_value(item, "artifact_id")),
+            title=_text(_value(item, "header")),
+            details={
+                field: _safe_json(_value(item, field), depth=depth + 1)
+                for field in ("short_header", "short_sub_header", "type", "text", "featured")
+                if _value(item, field) is not None
+            },
+        )
     if class_name == "Track":
         data = format_track(item).model_dump(exclude_none=True)
         return PublicItem(
@@ -235,6 +265,8 @@ def public_item(item: Any, *, depth: int = 0) -> PublicItem:
         for field in fields
         if _value(item, field) is not None
     }
+    if "items" in details and _value(item, "_more") is not None:
+        details["show_more_available"] = True
     identifier = _identifier(item)
     title = _text(details.pop("title", None))
     name = _text(details.pop("name", None))

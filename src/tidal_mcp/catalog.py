@@ -20,6 +20,18 @@ Index = Annotated[int, Field(ge=0, le=100_000)]
 Indices = Annotated[list[int], Field(min_length=1, max_length=500)]
 Direction = Literal["ASC", "DESC"]
 GenreKind = Literal["tracks", "albums", "artists", "playlists", "videos"]
+EditorialPage = Literal[
+    "home",
+    "explore",
+    "for_you",
+    "genres",
+    "hires",
+    "local_genres",
+    "mixes",
+    "moods",
+    "videos",
+]
+CategoryIndex = Annotated[int, Field(ge=0, le=500)]
 
 
 @dataclass(frozen=True, slots=True)
@@ -397,6 +409,12 @@ READ_TOOL_SPECS: tuple[ReadToolSpec, ...] = (
         (p("mix_id", Identifier), *PAGE),
     ),
     ReadToolSpec(
+        "tidal_get_mix_v2_items",
+        "List v2 mix items",
+        "Page through the tracks and videos in a current-generation TIDAL mix.",
+        (p("mix_id", Identifier), *PAGE),
+    ),
+    ReadToolSpec(
         "tidal_get_mix_image",
         "Get a mix image",
         "Return a legacy mix image URL at a supported size.",
@@ -430,6 +448,34 @@ READ_TOOL_SPECS: tuple[ReadToolSpec, ...] = (
     ),
     ReadToolSpec("tidal_browse_moods", "Browse moods", "Return TIDAL's mood page.", ()),
     ReadToolSpec("tidal_browse_videos", "Browse videos", "Return TIDAL's video page.", ()),
+    ReadToolSpec(
+        "tidal_list_page_category_items",
+        "List an editorial category's items",
+        "Page through the catalog items inside one category of an editorial page.",
+        (p("page", EditorialPage), p("category_index", CategoryIndex), *PAGE),
+    ),
+    ReadToolSpec(
+        "tidal_list_page_links",
+        "List an editorial section's links",
+        "Page through the page links inside one category of an editorial page.",
+        (p("page", EditorialPage), p("category_index", CategoryIndex), *PAGE),
+    ),
+    ReadToolSpec(
+        "tidal_show_more_page_category",
+        "Expand an editorial category",
+        "Load the show-more or view-all page for one editorial category.",
+        (p("page", EditorialPage), p("category_index", CategoryIndex)),
+    ),
+    ReadToolSpec(
+        "tidal_open_page_link",
+        "Open an editorial page link",
+        "Open the page behind one link of an editorial page's link list.",
+        (
+            p("page", EditorialPage),
+            p("category_index", CategoryIndex),
+            p("link_index", CategoryIndex),
+        ),
+    ),
     ReadToolSpec("tidal_list_genres", "List TIDAL genres", "List every catalog genre.", PAGE),
     ReadToolSpec(
         "tidal_get_genre_items",

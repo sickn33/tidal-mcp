@@ -1,13 +1,13 @@
 # API coverage contract
 
-This document defines what “complete” means for TIDAL MCP 1.0. The supported adapter is
+This document defines what “complete” means for TIDAL MCP. The supported adapter is
 `tidalapi 0.8.11`; the executable source of truth is `src/tidal_mcp/catalog.py` plus the six
 handwritten workflow tools in `src/tidal_mcp/server.py`.
 
 ## Coverage result
 
-- 112 MCP tools with input and output schemas.
-- 74 read-only tools.
+- 117 MCP tools with input and output schemas.
+- 79 read-only tools.
 - 36 exact local mutation-preview tools.
 - 2 approval-token commit tools.
 - 100% statement and branch test coverage, enforced by `fail_under = 100`.
@@ -20,7 +20,7 @@ handwritten workflow tools in `src/tidal_mcp/server.py`.
 | TIDAL surface | MCP coverage |
 | --- | --- |
 | Session/account | Authentication status; current or public user lookup; user image |
-| Search and identifiers | Multi-type search; track, album, artist, playlist, video, mix, user; barcode and ISRC lookup |
+| Search and identifiers | Multi-type search including videos; track, album, artist, playlist, video, mix, user; barcode and ISRC lookup |
 | Tracks | Metadata, radio tracks, radio mix, lyrics, playback metadata, temporary playback URL |
 | Albums | Metadata, tracks, mixed items, review, similar albums, audio resolutions, cover/video art, page |
 | Artists | Metadata, albums, EPs/singles, other appearances, bio, radio, radio mix, related artists, top tracks, videos, image, page |
@@ -28,11 +28,27 @@ handwritten workflow tools in `src/tidal_mcp/server.py`.
 | Playlists | Metadata, paginated tracks/items, item and track counts, square/wide images |
 | Collection | Favorite tracks, albums, artists, playlists, videos, mixes, folders, aggregate counts |
 | User playlists | Owned, public, and combined owned/favorite views |
-| Mixes | Legacy and v2 metadata/images plus paginated mix items |
+| Mixes | Legacy and v2 metadata/images plus paginated mix items for both mix generations |
 | Discovery pages | Home, Explore, For You, genre hubs, hi-res, local genres, mixes, moods, videos |
+| Editorial navigation | Category items, section links, show-more/view-all expansion, and opening a page link |
 | Genres | Complete genre list and paginated tracks, albums, artists, playlists, or videos by genre |
 | Folders | Folder metadata and paginated contents |
 | Recommendations | Multi-seed Track Radio, deduplication, provenance, deterministic metadata filters |
+
+Catalog search returns videos alongside tracks, albums, artists, and playlists when the caller
+requests them. Video results use the same public-item shape as the other video tools, because
+`tidalapi` exposes videos with a different field set than the other catalog objects.
+
+Editorial pages are navigated in four steps. `tidal_list_page_category_items` returns the catalog
+objects inside one category, resolving lazy `PageItem` wrappers through `PageItem.get()`.
+`tidal_list_page_links` returns the `PageLink` entries of a link list, with the linked API path as
+the item id, and `tidal_open_page_link` follows one of them. `tidal_show_more_page_category` loads
+the show-more or view-all page for a category. Both page generations store that follow-up endpoint
+as a private `_more` record; the version-1 `show_more()` helper and the version-2 `view_all()`
+helper reach the same endpoint, but `tidalapi 0.8.11`'s `view_all()` calls a `Session.view_all`
+method that does not exist, so the endpoint is loaded directly for both. Pagination slices a
+category before any wrapper is resolved, so a request never dereferences more items than it asked
+for.
 
 All list tools use explicit bounds and return pagination metadata. Objects are serialized through
 a public-field allowlist; OAuth tokens, session objects, request clients, and internal attributes

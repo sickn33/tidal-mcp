@@ -1,7 +1,7 @@
 {
   "name": "@sickn33/tidal-mcp",
   "version": "1.0.1",
-  "description": "The complete, safety-first MCP server for TIDAL with 112 typed tools.",
+  "description": "The complete, safety-first MCP server for TIDAL with 117 typed tools.",
   "type": "module",
   "license": "MIT",
   "author": "sickn33",

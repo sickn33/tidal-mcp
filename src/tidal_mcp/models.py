@@ -17,6 +17,18 @@ class SearchType(StrEnum):
     ALBUMS = "albums"
     ARTISTS = "artists"
     PLAYLISTS = "playlists"
+    VIDEOS = "videos"
+
+
+class PublicItem(StrictModel):
+    """A stable, credential-free representation of any TIDAL catalog object."""
+
+    type: str
+    id: str | None = None
+    title: str | None = None
+    name: str | None = None
+    url: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class Track(StrictModel):
@@ -29,6 +41,7 @@ class Track(StrictModel):
     duration_seconds: int | None = Field(default=None, ge=0)
     explicit: bool | None = None
     release_date: str | None = None
+    isrc: str | None = Field(default=None, description="International Standard Recording Code.")
     url: str
     source_seed_ids: list[str] = Field(default_factory=list)
 
@@ -98,6 +111,12 @@ class SearchResponse(StrictModel):
     albums: list[Album] = Field(default_factory=list)
     artists: list[Artist] = Field(default_factory=list)
     playlists: list[Playlist] = Field(default_factory=list)
+    videos: list[PublicItem] = Field(
+        default_factory=list,
+        description=(
+            "Videos are returned as public items, matching the shape used by the video tools."
+        ),
+    )
     has_more: bool
     next_offset: int | None = Field(default=None, ge=0)
 
@@ -147,17 +166,6 @@ class CommitPlaylistResult(StrictModel):
     tracks_requested: int = Field(ge=0)
     tracks_added: int = Field(ge=0)
     warning: str | None = None
-
-
-class PublicItem(StrictModel):
-    """A stable, credential-free representation of any TIDAL catalog object."""
-
-    type: str
-    id: str | None = None
-    title: str | None = None
-    name: str | None = None
-    url: str | None = None
-    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class CatalogResult(StrictModel):

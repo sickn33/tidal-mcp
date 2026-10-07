@@ -168,7 +168,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
             list[SearchType] | None,
             Field(
                 min_length=1,
-                max_length=4,
+                max_length=5,
                 description="Catalog result types to return; defaults to tracks.",
             ),
         ] = None,

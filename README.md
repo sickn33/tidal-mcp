@@ -13,9 +13,9 @@
 **TIDAL MCP** connects Codex, Claude Desktop, Claude Code, Cursor, and other
 stdio-compatible Model Context Protocol clients to a TIDAL account. Search the catalog,
 analyze playlists, discover music, read lyrics and credits, manage favorites, organize folders,
-and safely create or edit playlists through **112 typed MCP tools**.
+and safely create or edit playlists through **117 typed MCP tools**.
 
-> **Positioning:** as of September 4, 2026, this is the most complete public TIDAL MCP
+> **Positioning:** in the September 4, 2026 review, this was the most complete public TIDAL MCP
 > implementation found in a reproducible review of the current GitHub landscape. The claim is
 > based on registered tool coverage, structured schemas, mutation safety, and automated test
 > evidence—not marketing alone. See the [dated comparison](docs/COMPETITIVE_MATRIX.md).
@@ -28,7 +28,7 @@ Most TIDAL integrations expose a small selection of search and playlist commands
 built as a complete local control surface for AI agents while keeping credentials and approvals
 on your machine.
 
-- **112 discoverable tools:** 74 reads, 36 mutation previews, and 2 approval-token commits.
+- **117 discoverable tools:** 79 reads, 36 mutation previews, and 2 approval-token commits.
 - **Broad account coverage:** catalog, editorial pages, recommendations, lyrics, favorites,
   playlists, folders, mixes, images, and playback metadata.
 - **Safe writes:** mutations are off by default and always require preview → explicit approval →
@@ -154,6 +154,8 @@ writes are locked to reduce duplicate effects. Destructive previews are clearly 
 - **Artists and albums:** discographies, EPs and singles, appearances, biographies, reviews,
   related artists, similar albums, resolutions, artwork, and editorial pages.
 - **Discovery:** Home, Explore, For You, genres, moods, mixes, videos, hi-res, and local genre hubs.
+- **Editorial navigation:** read the items and links inside a page category, expand a
+  show-more/view-all section, and open a page link to keep browsing past the first screen.
 - **Collection:** favorite tracks, albums, artists, playlists, videos, mixes, folders, and counts.
 - **Playlists:** metadata, tracks, mixed items, counts, images, create/edit/delete/clear/merge,
   visibility, add/remove/reorder operations.
@@ -187,7 +189,7 @@ uv build
 
 The coverage gate is **100% for statements and branches**. Tests exercise every registered read
 and mutation route through the MCP schemas and the pinned `tidalapi` adapter without contacting
-TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 112 tool
+TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 117 tool
 schemas.
 
 Official releases are published from GitHub Actions through npm Trusted Publishing, with no
