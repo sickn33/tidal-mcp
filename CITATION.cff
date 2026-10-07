@@ -1,4 +1,4 @@
-cff-version: 1.2.0
+cff-version: 1.3.0
 message: "If you use TIDAL MCP in research or an evaluation, cite this repository."
 title: "TIDAL MCP"
 type: software
@@ -6,7 +6,7 @@ authors:
   - name: "sickn33"
 repository-code: "https://github.com/sickn33/tidal-mcp"
 url: "https://github.com/sickn33/tidal-mcp"
-version: 1.2.0
+version: 1.3.0
 date-released: "2026-10-07"
 license: MIT
 keywords:
