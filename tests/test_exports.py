@@ -290,3 +290,15 @@ def test_playlist_title_falls_back_to_the_title_field() -> None:
     client = TidalClient(session)
 
     assert client.playlist_title("left") == "From Title Field"
+
+
+def test_playlist_track_count_helper_falls_back_to_none() -> None:
+    session = TwoPlaylistSession([], [])
+
+    def explode(_playlist_id: str):
+        raise ValueError("upstream detail")
+
+    session.playlist = explode
+    client = TidalClient(session)
+
+    assert client._playlist_track_count("left") is None

@@ -1143,14 +1143,16 @@ def test_collect_playlist_tracks_walks_two_windows_without_a_counter(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Without an exact counter the page signal must still allow a next window."""
-    client = TidalClient(playlist_session(CollectablePlaylist(5)))
+    session = playlist_session(CollectablePlaylist(5))
+    node = session.playlist("x")
+    del node.get_tracks_count  # force the path that trusts the cursor
+    client = TidalClient(session)
     track = Track(id="1", title="One", artist="A", url="https://tidal.com/browse/track/1")
     pages = [
         TrackPage(items=[track], count=1, limit=1, offset=0, has_more=True, next_offset=1),
         TrackPage(items=[track], count=1, limit=1, offset=1, has_more=False, next_offset=None),
     ]
-    monkeypatch.setattr(client, "_playlist_track_count", lambda _identifier: None)
-    monkeypatch.setattr(client, "get_playlist_tracks", lambda *_a, **_k: pages.pop(0))
+    monkeypatch.setattr(client, "_playlist_page", lambda *_a, **_k: pages.pop(0))
 
     collected = client.collect_playlist_tracks("playlist-1", max_items=50)
 
@@ -1163,7 +1165,10 @@ def test_collect_playlist_tracks_stops_on_a_frozen_provider_cursor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A cursor that never advances would loop forever without the defensive check."""
-    client = TidalClient(playlist_session(CollectablePlaylist(5)))
+    session = playlist_session(CollectablePlaylist(5))
+    node = session.playlist("x")
+    del node.get_tracks_count  # force the path that trusts the cursor
+    client = TidalClient(session)
     track = Track(id="1", title="One", artist="A", url="https://tidal.com/browse/track/1")
     frozen = TrackPage(
         items=[track],
@@ -1173,8 +1178,7 @@ def test_collect_playlist_tracks_stops_on_a_frozen_provider_cursor(
         has_more=True,
         next_offset=0,
     )
-    monkeypatch.setattr(client, "_playlist_track_count", lambda _identifier: None)
-    monkeypatch.setattr(client, "get_playlist_tracks", lambda *_a, **_k: frozen)
+    monkeypatch.setattr(client, "_playlist_page", lambda *_a, **_k: frozen)
 
     collected = client.collect_playlist_tracks("playlist-1", max_items=50)
 
@@ -1185,13 +1189,15 @@ def test_collect_playlist_tracks_stops_on_a_frozen_provider_cursor(
 def test_collect_playlist_tracks_wraps_a_non_tidal_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client = TidalClient(playlist_session(CollectablePlaylist(5)))
+    session = playlist_session(CollectablePlaylist(5))
+    node = session.playlist("x")
+    del node.get_tracks_count
+    client = TidalClient(session)
 
     def explode(*_args: object, **_kwargs: object) -> None:
         raise ValueError("raw upstream detail")
 
-    monkeypatch.setattr(client, "_playlist_track_count", lambda _identifier: None)
-    monkeypatch.setattr(client, "get_playlist_tracks", explode)
+    monkeypatch.setattr(client, "_playlist_page", explode)
 
     with pytest.raises(TidalClientError) as caught:
         client.collect_playlist_tracks("playlist-1", max_items=10)
@@ -1242,3 +1248,136 @@ def test_collect_playlist_tracks_is_truncated_when_a_capped_page_still_has_more(
 
     assert collected.count == 2
     assert collected.truncated is True
+
+
+def test_collect_wraps_a_resolution_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = TidalClient(playlist_session(CollectablePlaylist(3)))
+
+    def explode(_identifier: str):
+        raise ValueError("raw resolution detail")
+
+    monkeypatch.setattr(client, "_resolve_playlist", explode)
+
+    with pytest.raises(TidalClientError) as caught:
+        client.collect_playlist_tracks("playlist-1", max_items=10)
+
+    assert "raw resolution detail" not in str(caught.value)
+
+
+def test_collect_wraps_a_count_failure_inside_the_walk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failure while walking still surfaces as a safe tool error, not a raw exception."""
+    client = TidalClient(playlist_session(CollectablePlaylist(3)))
+
+    def explode(*_args: object, **_kwargs: object) -> None:
+        raise ValueError("raw walk detail")
+
+    monkeypatch.setattr(client, "_playlist_page", explode)
+
+    with pytest.raises(TidalClientError) as caught:
+        client.collect_playlist_tracks("playlist-1", max_items=10)
+
+    assert "raw walk detail" not in str(caught.value)
+
+
+def test_collect_for_export_wraps_a_resolution_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = TidalClient(playlist_session(CollectablePlaylist(3)))
+
+    def explode(_identifier: str):
+        raise ValueError("raw export detail")
+
+    monkeypatch.setattr(client, "_resolve_playlist", explode)
+
+    with pytest.raises(TidalClientError) as caught:
+        client.collect_playlist_for_export("playlist-1", max_items=10)
+
+    assert "raw export detail" not in str(caught.value)
+
+
+def test_summarize_wraps_a_resolution_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = TidalClient(playlist_session(CollectablePlaylist(3)))
+
+    def explode(_identifier: str):
+        raise ValueError("raw summary detail")
+
+    monkeypatch.setattr(client, "_resolve_playlist", explode)
+
+    with pytest.raises(TidalClientError) as caught:
+        client.summarize_playlist("playlist-1", max_items=10, top_artists=1)
+
+    assert "raw summary detail" not in str(caught.value)
+
+
+def _raising_client(monkeypatch: pytest.MonkeyPatch, message: str) -> TidalClient:
+    """A client whose playlist resolution raises an expected domain error."""
+    client = TidalClient(playlist_session(CollectablePlaylist(3)))
+
+    def explode(_identifier: str) -> None:
+        raise TidalClientError(message)
+
+    monkeypatch.setattr(client, "_resolve_playlist", explode)
+    return client
+
+
+def test_expected_domain_errors_pass_through_unwrapped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A TidalClientError is already a safe message, so it must not be re-wrapped."""
+    client = _raising_client(monkeypatch, "playlist is unavailable")
+
+    with pytest.raises(TidalClientError, match="playlist is unavailable"):
+        client.collect_playlist_tracks("playlist-1", max_items=10)
+
+
+def test_the_inner_walk_reraises_a_domain_error_from_a_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = TidalClient(playlist_session(CollectablePlaylist(3)))
+
+    def explode(*_args: object, **_kwargs: object) -> None:
+        raise TidalClientError("page failed safely")
+
+    monkeypatch.setattr(client, "_playlist_page", explode)
+
+    with pytest.raises(TidalClientError, match="page failed safely"):
+        client.collect_playlist_tracks("playlist-1", max_items=10)
+
+
+def test_export_helper_reraises_a_domain_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _raising_client(monkeypatch, "export precondition failed")
+
+    with pytest.raises(TidalClientError, match="export precondition failed"):
+        client.collect_playlist_for_export("playlist-1", max_items=10)
+
+
+def test_summarize_reraises_a_domain_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    client = _raising_client(monkeypatch, "summary precondition failed")
+
+    with pytest.raises(TidalClientError, match="summary precondition failed"):
+        client.summarize_playlist("playlist-1", max_items=10, top_artists=1)
+
+
+def test_export_helper_returns_the_title_and_collected_tracks() -> None:
+    client = TidalClient(playlist_session(CollectablePlaylist(4), title="Export Me"))
+
+    title, collected = client.collect_playlist_for_export("playlist-1", max_items=10)
+
+    assert title == "Export Me"
+    assert collected.count == 4
+
+
+def test_compare_reraises_a_domain_error_from_a_side(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = TidalClient(playlist_session(CollectablePlaylist(3)))
+
+    def explode(*_args: object, **_kwargs: object) -> None:
+        raise TidalClientError("side failed safely")
+
+    monkeypatch.setattr(client, "_collect_playlist", explode)
+
+    with pytest.raises(TidalClientError, match="side failed safely"):
+        client.compare_playlists("left", "right", max_items=10)
