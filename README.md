@@ -209,7 +209,7 @@ Release maintainers can test the exact public npm package through the same MCP c
 uv run python scripts/smoke_live_read_only.py \
   --command npx \
   --server-arg=-y \
-  --server-arg=@sickn33/tidal-mcp@1.1.1
+  --server-arg=@sickn33/tidal-mcp@1.2.0
 ```
 
 The deterministic [evaluation suite](docs/EVALUATION.md) and the dated
@@ -240,9 +240,9 @@ directories.
 
 ## Project status
 
-Version **1.1.1** fixes personalized Home expansion in the editorial navigation tools added by
-1.1.0, which also brought v2 mix items and video search. npm is the primary
-installation channel, and every release is also published to the official MCP Registry.
+Version **1.2.0** adds full-playlist collection, a deterministic playlist summary, and four
+built-in prompts, on top of the editorial navigation and video search added in 1.1.0. npm is the
+primary installation channel, and every release is also published to the official MCP Registry.
 
 ## License, attribution, and trademark notice
 
