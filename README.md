@@ -215,7 +215,7 @@ Release maintainers can test the exact public npm package through the same MCP c
 uv run python scripts/smoke_live_read_only.py \
   --command npx \
   --server-arg=-y \
-  --server-arg=@sickn33/tidal-mcp@1.3.0
+  --server-arg=@sickn33/tidal-mcp@1.4.0
 ```
 
 The deterministic [evaluation suite](docs/EVALUATION.md) and the dated
@@ -246,7 +246,7 @@ directories.
 
 ## Project status
 
-Version **1.3.0** adds playlist export to JSON or M3U and a set comparison of two playlists, on top of the full-playlist collection, summaries, and prompts added in 1.2.0. npm is the primary installation channel, and every release is also published to the official MCP Registry.
+Version **1.4.0** adds export of a playlist summary or comparison to JSON, and reduces the network cost of every playlist tool by resolving each playlist once per call.
 
 ## License, attribution, and trademark notice
 
