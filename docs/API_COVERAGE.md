@@ -38,6 +38,41 @@ All list tools use explicit bounds and return pagination metadata. Objects are s
 a public-field allowlist; OAuth tokens, session objects, request clients, and internal attributes
 cannot enter tool results.
 
+`tidal_list_favorite_tracks`, `tidal_list_favorite_albums`, `tidal_list_favorite_artists`,
+`tidal_list_favorite_playlists`, and `tidal_list_favorite_videos` report `has_more` as true when
+either the over-fetched page still holds an extra item beyond `limit` or the account's exact count
+for that collection places a later offset inside the collection, so neither signal can mask the
+other. TIDAL's favorites endpoints omit unavailable items inside a requested window, so a page can
+be short: a request for 51 items at offset 0 returned 48 items for a collection of 657. Only the
+favorite-track endpoint was measured; the sibling listings share the endpoint family and were
+changed by symmetry. A counted favorites page that comes back empty is still returned as a page,
+with `items`, `count`, and a computed `has_more`, so a consumer must not read an empty page as the
+end of a walk. `tidal_list_favorite_mixes` has no exact counter, because `tidalapi 0.8.11` exposes
+none, so its cursor rests on the over-fetched page alone, clamped as described below once the
+requested `limit` reaches 50. Catalog search, album tracks, and playlist items still infer
+`has_more` from an over-fetched page; those endpoints were measured and did not return short
+pages. The `tidalapi` playlist counter also counts playlist folders, while the favorites playlist
+listing does not return folders, so for `tidal_list_favorite_playlists` the count is an upper
+bound that can exceed the number of items the endpoint will ever serve.
+Consumers should walk pages until `has_more` is false, accept pages containing fewer items than
+`limit`, accept empty pages, and treat collection counts as upper bounds, because they include
+items TIDAL declines to serve.
+
+Pagination detects a further page by requesting one item beyond `limit`. Five operations cannot:
+on `tidalapi 0.8.11` `tidal_list_favorite_playlists`, `tidal_list_favorite_mixes`,
+`tidal_list_playlist_folders`, `tidal_list_public_playlists`, and
+`tidal_list_playlists_and_favorites` answer a 51-item request with HTTP 400 while a 50-item
+request succeeds, so for exactly those five the page itself is clamped to 50 items. The schema
+admits a `limit` up to 100, but these five serve at most 50 items per page however large the
+requested `limit` is: the envelope reports the clamped `limit`, not the requested one, and
+`next_offset` advances by the clamped page size, so no window is skipped. No other paginated read
+is clamped; every one of them still requests one item beyond `limit`. A clamped page that fills
+its window reports `has_more` as true, because a full window cannot be distinguished from a
+truncated one, so the last page of such a walk can come back empty. An empty page is therefore
+never an end-of-walk signal on these surfaces either; `has_more` is the only authoritative one.
+`tidal_list_favorite_playlists` additionally carries its exact collection counter, so its cursor
+does not rely on the clamped signal alone.
+
 ## Mutation surface
 
 Every mutation has a named `tidal_preview_*` tool. A preview may read public target metadata and

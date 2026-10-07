@@ -93,6 +93,30 @@ def _search_bucket(result: Any, name: str) -> list[Any]:
     return _sequence(value)
 
 
+_FAVORITE_TOTAL_METHODS: dict[str, str] = {
+    "tidal_list_favorite_albums": "get_albums_count",
+    "tidal_list_favorite_artists": "get_artists_count",
+    "tidal_list_favorite_playlists": "get_playlists_count",
+    "tidal_list_favorite_videos": "get_videos_count",
+}
+
+_PROVIDER_MAX_LIMIT = 50
+
+_CAPPED_LIMIT_OPERATIONS = frozenset(
+    {
+        "tidal_list_favorite_playlists",
+        "tidal_list_favorite_mixes",
+        "tidal_list_playlist_folders",
+        "tidal_list_public_playlists",
+        "tidal_list_playlists_and_favorites",
+    }
+)
+
+
+def _fetch_size(limit: int) -> int:
+    return min(limit + 1, _PROVIDER_MAX_LIMIT)
+
+
 class TidalClient:
     """Authenticated TIDAL operations with stable model conversion."""
 
@@ -227,9 +251,10 @@ class TidalClient:
                     order_direction="DESC",
                 )
             tracks = [format_track(item) for item in items]
+            total = self._favorites_count(favorites, "get_tracks_count")
         except Exception as exc:
             self._raise_operation_error("list favorite tracks", exc)
-        return self._track_page(tracks, limit, offset)
+        return self._track_page(tracks, limit, offset, total=total)
 
     def list_playlists(self, limit: int, offset: int) -> PlaylistPage:
         try:
@@ -352,10 +377,13 @@ class TidalClient:
         method: Any,
         params: dict[str, Any],
         order_type: Any,
+        *,
+        capped: bool = False,
     ) -> list[Any]:
+        limit = params["limit"]
         return list(
             method(
-                limit=params["limit"] + 1,
+                limit=_fetch_size(limit) if capped else limit + 1,
                 offset=params["offset"],
                 order=self._enum_value(order_type, params.get("order")),
                 order_direction=self._enum_value(
@@ -381,6 +409,8 @@ class TidalClient:
     def execute_read(self, operation: str, params: dict[str, Any]) -> CatalogResult:
         """Execute one allowlisted read operation and return a stable public envelope."""
         p = params
+        if operation in _CAPPED_LIMIT_OPERATIONS and params.get("limit") is not None:
+            p = {**params, "limit": min(params["limit"], _PROVIDER_MAX_LIMIT)}
         s = self.session
         favorites = s.user.favorites
 
@@ -467,16 +497,16 @@ class TidalClient:
                 favorites.artists, p, tidal_types.ArtistOrder
             ),
             "tidal_list_favorite_playlists": lambda: self._ordered(
-                favorites.playlists, p, tidal_types.PlaylistOrder
+                favorites.playlists, p, tidal_types.PlaylistOrder, capped=True
             ),
             "tidal_list_favorite_videos": lambda: self._ordered(
                 favorites.videos, p, tidal_types.VideoOrder
             ),
             "tidal_list_favorite_mixes": lambda: self._ordered(
-                favorites.mixes, p, tidal_types.MixOrder
+                favorites.mixes, p, tidal_types.MixOrder, capped=True
             ),
             "tidal_list_playlist_folders": lambda: favorites.playlist_folders(
-                limit=p["limit"] + 1,
+                limit=_fetch_size(p["limit"]),
                 offset=p["offset"],
                 order=self._enum_value(tidal_types.PlaylistOrder, p.get("order")),
                 order_direction=self._enum_value(
@@ -492,10 +522,10 @@ class TidalClient:
                 "videos": favorites.get_videos_count(),
             },
             "tidal_list_public_playlists": lambda: s.user.public_playlists(
-                offset=p["offset"], limit=p["limit"] + 1
+                offset=p["offset"], limit=_fetch_size(p["limit"])
             ),
             "tidal_list_playlists_and_favorites": lambda: s.user.playlist_and_favorite_playlists(
-                offset=p["offset"], limit=p["limit"] + 1
+                offset=p["offset"], limit=_fetch_size(p["limit"])
             ),
             "tidal_get_user_image": lambda: s.user.image(p["dimensions"]),
             "tidal_get_mix_items": lambda: page(s.mix(p["mix_id"]).items()),
@@ -528,12 +558,20 @@ class TidalClient:
             warnings.append(
                 "Playback URLs are temporary and account-scoped; no media was downloaded."
             )
+        total = None
+        if operation in _FAVORITE_TOTAL_METHODS and p.get("limit") is not None:
+            total = self._favorites_count(favorites, _FAVORITE_TOTAL_METHODS[operation])
+        fetched = None
+        if operation in _CAPPED_LIMIT_OPERATIONS and p.get("limit") is not None:
+            fetched = _fetch_size(p["limit"])
         return format_catalog_result(
             operation,
             value,
             limit=p.get("limit"),
             offset=p.get("offset"),
             warnings=warnings,
+            total=total,
+            fetched=fetched,
         )
 
     def preview_mutation(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -685,8 +723,10 @@ class TidalClient:
         )
 
     @staticmethod
-    def _track_page(tracks: list[Track], limit: int, offset: int) -> TrackPage:
-        has_more = len(tracks) > limit
+    def _track_page(
+        tracks: list[Track], limit: int, offset: int, *, total: int | None = None
+    ) -> TrackPage:
+        has_more = len(tracks) > limit or (total is not None and offset + limit < total)
         return TrackPage(
             items=tracks[:limit],
             count=min(len(tracks), limit),
@@ -695,6 +735,14 @@ class TidalClient:
             has_more=has_more,
             next_offset=offset + limit if has_more else None,
         )
+
+    @staticmethod
+    def _favorites_count(favorites: Any, method: str) -> int | None:
+        try:
+            return int(getattr(favorites, method)())
+        except Exception as exc:
+            LOGGER.info("TIDAL favorites count unavailable (%s)", type(exc).__name__)
+            return None
 
     @staticmethod
     def _raise_operation_error(operation: str, exc: Exception) -> NoReturn:

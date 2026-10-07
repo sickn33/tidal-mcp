@@ -5,6 +5,19 @@ All notable changes to TIDAL MCP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Favorite track, album, artist, playlist, and video listings no longer stop after the first page
+  when TIDAL returns a short page. Favorite mixes keep the previous behaviour, as `tidalapi`
+  exposes no mix counter.
+- A counted favorites page that returns no items is now emitted as a page with `has_more`, instead
+  of a bare value without pagination metadata that ended a walk early.
+- Favorite playlist, favorite mix, playlist folder, public playlist, and combined playlist
+  listings no longer fail for any request of 50 or more items, where the pagination probe asked
+  TIDAL for 51. Those five now serve at most 50 items per page, whatever `limit` is requested.
+
 ## [1.0.1] - 2026-09-04
 
 ### Added
