@@ -6,7 +6,7 @@ Canonical page: https://sickn33.github.io/tidal-mcp/
 Source: https://github.com/sickn33/tidal-mcp
 npm: https://www.npmjs.com/package/@sickn33/tidal-mcp
 MCP Registry name: io.github.sickn33/tidal-mcp
-Version: 1.3.0
+Version: 1.4.0
 License: MIT
 Transport: local stdio
 Supported systems: macOS and Linux
@@ -36,10 +36,10 @@ Use cases: https://github.com/sickn33/tidal-mcp/blob/main/docs/USE_CASES.md
 ## Install
 
 Authenticate:
-npx -y @sickn33/tidal-mcp@1.3.0 auth
+npx -y @sickn33/tidal-mcp@1.4.0 auth
 
 Run the MCP server:
-npx -y @sickn33/tidal-mcp@1.3.0
+npx -y @sickn33/tidal-mcp@1.4.0
 
 Enable approval-gated writes by setting TIDAL_MCP_ENABLE_WRITES=1 in the MCP process environment.
 
