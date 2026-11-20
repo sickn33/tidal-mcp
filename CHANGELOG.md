@@ -17,6 +17,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Concurrent exports targeting the same filename now publish a single complete, private file.
   Each competing export receives a filename conflict.
 
+- Updated the locked runtime dependencies certifi to 2026.10.23 and opentelemetry-api to 1.45.2.
+
 ## [1.4.0] - 2026-10-07
 
 ### Added
