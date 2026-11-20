@@ -39,4 +39,12 @@
     <question>Request recommendations from seed-1 and seed-2, require release year 2020 or later, explicit false, and at most one track per artist. Which two titles remain, in order?</question>
     <answer>Glass Harbor, Blue Static</answer>
   </qa_pair>
+  <qa_pair>
+    <question>Search saved tracks for "northline" with a scan limit of 1. Follow the cursor through the fixture library. Which titles match, in order?</question>
+    <answer>Quiet Signals, Glass Harbor</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Recommend non-explicit additions to playlist-1 using the playlist as the source of radio seeds. Which title remains after checking existing tracks?</question>
+    <answer>Long Orbit</answer>
+  </qa_pair>
 </evaluation>

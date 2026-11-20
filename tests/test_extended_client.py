@@ -682,13 +682,14 @@ def test_uncapped_ordered_listings_keep_the_over_fetch_slot_at_fifty() -> None:
     assert session.recorded == [51, 51, 51, 51]
 
 
-def test_uncapped_favorite_track_listing_still_over_fetches_at_the_maximum() -> None:
+def test_counted_favorite_track_listing_reads_an_exact_window_at_the_maximum() -> None:
     session = recording_listing_session(2, get_tracks_count=lambda: 657)
     client = TidalClient(session)
 
-    client.list_favorite_tracks(limit=50, offset=0)
+    page = client.list_favorite_tracks(limit=50, offset=0)
 
-    assert session.recorded == [51]
+    assert session.recorded == [50]
+    assert page.count == 2 and page.next_offset == 50
 
 
 def test_capped_full_page_reports_more_work_without_an_over_fetch_slot() -> None:

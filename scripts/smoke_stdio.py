@@ -19,6 +19,8 @@ EXPECTED_TOOLS = {
     "tidal_list_playlists",
     "tidal_get_playlist_tracks",
     "tidal_recommend_tracks",
+    "tidal_recommend_for_playlist",
+    "tidal_search_favorite_tracks",
     "tidal_collect_playlist_tracks",
     "tidal_summarize_playlist",
     "tidal_compare_playlists",
@@ -35,6 +37,7 @@ async def smoke() -> None:
     with tempfile.TemporaryDirectory(prefix="tidal-mcp-smoke-") as directory:
         environment = dict(os.environ)
         environment["TIDAL_MCP_DATA_DIR"] = directory
+        environment.pop("TIDAL_MCP_SESSION_FILE", None)
         environment.pop("TIDAL_MCP_ENABLE_WRITES", None)
         parameters = StdioServerParameters(
             command=sys.executable,
@@ -44,7 +47,7 @@ async def smoke() -> None:
         async with Client(parameters, raise_exceptions=True) as client:
             listed = await client.list_tools()
             names = {tool.name for tool in listed.tools}
-            if names != EXPECTED_TOOLS or len(names) != 122:
+            if names != EXPECTED_TOOLS or len(names) != 124:
                 raise RuntimeError(f"Unexpected tool set: {sorted(names)}")
             auth = await client.call_tool("tidal_auth_status", {})
             if auth.is_error or auth.structured_content is None:

@@ -17,6 +17,10 @@ class TidalClientError(TidalMCPError):
     """Raised for an expected failure while calling TIDAL."""
 
 
+class TrackRadioUnavailableError(TidalClientError):
+    """TIDAL has no radio for the selected track."""
+
+
 class DraftError(TidalMCPError):
     """Raised for invalid, expired, or already-used approval drafts."""
 

@@ -25,6 +25,8 @@ EXPECTED_TOOLS = {
     "tidal_list_playlists",
     "tidal_get_playlist_tracks",
     "tidal_recommend_tracks",
+    "tidal_recommend_for_playlist",
+    "tidal_search_favorite_tracks",
     "tidal_collect_playlist_tracks",
     "tidal_summarize_playlist",
     "tidal_compare_playlists",
@@ -81,6 +83,7 @@ def test_lists_exact_tools_with_schemas_and_safety_annotations(tmp_path: Path) -
             result = await client.list_tools()
             tools = {tool.name: tool for tool in result.tools}
             assert set(tools) == EXPECTED_TOOLS
+            assert sum(bool(tool.annotations.read_only_hint) for tool in tools.values()) == 84
             assert all(tool.output_schema for tool in tools.values())
             for name in EXPECTED_TOOLS - {
                 *(spec.name for spec in MUTATION_TOOL_SPECS),

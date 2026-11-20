@@ -1,13 +1,14 @@
 # API coverage contract
 
 This document defines what “complete” means for TIDAL MCP. The supported adapter is
-`tidalapi 0.8.11`; the executable source of truth is `src/tidal_mcp/catalog.py` plus the ten
+`tidalapi 0.8.11`; the executable source of truth is `src/tidal_mcp/catalog.py` plus the
 handwritten workflow tools in `src/tidal_mcp/server.py`.
 
 ## Coverage result
 
-- 122 MCP tools with input and output schemas.
+- 124 MCP tools with input and output schemas.
 - 84 read-only tools.
+- 2 local export tools.
 - 36 exact local mutation-preview tools.
 - 2 approval-token commit tools.
 - 100% statement and branch test coverage, enforced by `fail_under = 100`.
@@ -50,7 +51,7 @@ enumerated class.
 | Artists | Metadata, albums, EPs/singles, other appearances, bio, radio, radio mix, related artists, top tracks, videos, image, page |
 | Videos | Metadata, image, temporary playback URL |
 | Playlists | Metadata, paginated tracks/items, item and track counts, square/wide images |
-| Collection | Favorite tracks, albums, artists, playlists, videos, mixes, folders, aggregate counts |
+| Collection | Favorite-track search by title, primary artist, or album, favorite lists, folders, aggregate counts |
 | User playlists | Owned, public, and combined owned/favorite views |
 | Mixes | Legacy and v2 metadata/images plus paginated mix items for both mix generations |
 | Discovery pages | Home, Explore, For You, genre hubs, hi-res, local genres, mixes, moods, videos |
@@ -59,7 +60,7 @@ enumerated class.
 | Local export | A playlist written to JSON or M3U, plus a summary or comparison written to JSON, all inside the private export directory and never overwriting an existing file |
 | Genres | Complete genre list and paginated tracks, albums, artists, playlists, or videos by genre |
 | Folders | Folder metadata and paginated contents |
-| Recommendations | Multi-seed Track Radio, deduplication, provenance, deterministic metadata filters |
+| Recommendations | Manual or playlist-derived Track Radio seeds, recording exclusions, seed provenance, deterministic metadata filters |
 
 Catalog search returns videos alongside tracks, albums, artists, and playlists when the caller
 requests them. Video results use the same public-item shape as the other video tools, because
@@ -90,7 +91,11 @@ All list tools use explicit bounds and return pagination metadata. Objects are s
 a public-field allowlist; OAuth tokens, session objects, request clients, and internal attributes
 cannot enter tool results.
 
-`tidal_list_favorite_tracks`, `tidal_list_favorite_albums`, `tidal_list_favorite_artists`,
+`tidal_list_favorite_tracks` and saved-track search read disjoint windows. The collection
+count carries the cursor over unavailable rows. If a full window reaches the reported end,
+a separate one-position lookahead checks for a stale count.
+
+`tidal_list_favorite_albums`, `tidal_list_favorite_artists`,
 `tidal_list_favorite_playlists`, and `tidal_list_favorite_videos` report `has_more` as true when
 either the over-fetched page still holds an extra item beyond `limit` or the account's exact count
 for that collection places a later offset inside the collection, so neither signal can mask the
@@ -118,21 +123,44 @@ request succeeds, so for exactly those five the page itself is clamped to 50 ite
 admits a `limit` up to 100, but these five serve at most 50 items per page however large the
 requested `limit` is: the envelope reports the clamped `limit`, not the requested one, and
 `next_offset` advances by the clamped page size, so no window is skipped. No other paginated read
-is clamped; every one of them still requests one item beyond `limit`. A clamped page that fills
+is clamped. A clamped page that fills
 its window reports `has_more` as true, because a full window cannot be distinguished from a
 truncated one, so the last page of such a walk can come back empty. An empty page is therefore
 never an end-of-walk signal on these surfaces either; `has_more` is the only authoritative one.
 `tidal_list_favorite_playlists` additionally carries its exact collection counter, so its cursor
 does not rely on the clamped signal alone.
 
+## Saved-track search and playlist discovery
+
+`tidal_search_favorite_tracks` scans 100 saved positions per call by default, up to 500.
+It reads the favorites count once and fetches exact windows through `Favorites.tracks`. It
+advances over unavailable positions, including an entirely empty window. The result reports
+visible tracks examined in `scanned_count`, matches in `count`, and a collection cursor in
+`next_offset`. Matching uses every query word, ignores case and accents, and preserves
+newest-saved order. Follow the cursor to cover the collection as TIDAL serves it.
+
+`tidal_recommend_for_playlist` reads the track count once and checks the entire visible
+playlist through `Playlist.tracks`. The default budget is 500 positions and the maximum is
+2,000. An over-budget playlist yields an error before any track pages or radio calls. A scan
+requires a working count so a partial result cannot be presented as complete.
+
+Up to five distinct track IDs are selected at even intervals in their first-appearance order.
+One seed uses the first track. `Track.get_track_radio` supplies the candidates. The tool
+filters out existing IDs and valid matching ISRCs, applies the caller's metadata filters and
+artist limit, and returns one eligible edition per known recording. Missing ISRCs fall back
+to ID matching. The result reports each candidate's contributing seeds, the number already
+present, and seeds whose radio was unavailable. An empty playlist produces an empty result.
+
 ## Local export
 
-`tidal_export_playlist` is the only tool that writes to local disk, so it is annotated as not
-read-only rather than pretending to be a pure read. Its bounds: the target directory is fixed by
+`tidal_export_playlist` and `tidal_export_analysis` write files and carry the corresponding
+MCP annotation. The target directory is fixed by
 configuration and defaults to a subdirectory of the private data directory, a caller-supplied name
 is reduced to a single safe path segment, an existing file is refused rather than replaced, and the
 content is written through a temporary file so a reader never sees a partial export. The export
-holds public metadata and TIDAL URLs only, because the project never downloads media.
+holds public metadata and TIDAL URLs. Both exports publish the completed private file using an
+atomic hard link in the destination directory. Concurrent writers receive a filename conflict
+when another writer claims that name.
 
 `tidal_export_analysis` writes a summary or a comparison as JSON. It computes the derived result
 with the same code the read tools use and writes it through the same private, non-overwriting

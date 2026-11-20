@@ -11,12 +11,14 @@ from typing import Any, NoReturn, Protocol
 import requests
 import tidalapi
 import tidalapi.types as tidal_types
+from tidalapi.exceptions import MetadataNotAvailable
 
 from tidal_mcp.exceptions import (
     AuthenticationRequiredError,
     PartialPlaylistCreationError,
     TidalClientError,
     TidalMCPError,
+    TrackRadioUnavailableError,
 )
 from tidal_mcp.formatting import (
     _text,
@@ -59,6 +61,10 @@ class MusicClient(Protocol):
     ) -> SearchResponse: ...
 
     def list_favorite_tracks(self, limit: int, offset: int) -> TrackPage: ...
+
+    def favorite_track_window(self, limit: int, offset: int) -> TrackPage: ...
+
+    def complete_playlist_tracks(self, playlist_id: str, max_tracks: int) -> list[Track]: ...
 
     def list_playlists(self, limit: int, offset: int) -> PlaylistPage: ...
 
@@ -124,6 +130,45 @@ _CAPPED_LIMIT_OPERATIONS = frozenset(
 
 def _fetch_size(limit: int) -> int:
     return min(limit + 1, _PROVIDER_MAX_LIMIT)
+
+
+def _favorite_tracks(favorites: Any, *, limit: int, offset: int) -> Sequence[Any]:
+    try:
+        return favorites.tracks(
+            limit=limit,
+            offset=offset,
+            order=tidal_types.ItemOrder.Date,
+            order_direction=tidal_types.OrderDirection.Descending,
+        )
+    except (AttributeError, TypeError):
+        return favorites.tracks(limit=limit, offset=offset, order="DATE", order_direction="DESC")
+
+
+def _favorite_track_window(favorites: Any, limit: int, offset: int, total: int | None) -> TrackPage:
+    tracks = []
+    stop = offset + limit
+    has_more = False
+    for start in range(offset, stop, _PROVIDER_MAX_LIMIT):
+        size = min(_PROVIDER_MAX_LIMIT, stop - start)
+        rows = _favorite_tracks(favorites, limit=size, offset=start)
+        tracks.extend(format_track(row) for row in rows[:size])
+        end = start + size
+        has_more = total is not None and end < total
+        if not has_more:
+            if len(rows) < size:
+                break
+            if end == stop:
+                # Confirm a full last window independently of a stale or missing counter.
+                # The lookahead is separate so it cannot slip into a sparse result page.
+                has_more = bool(_favorite_tracks(favorites, limit=1, offset=end))
+    return TrackPage(
+        items=tracks,
+        count=len(tracks),
+        limit=limit,
+        offset=offset,
+        has_more=has_more,
+        next_offset=stop if has_more else None,
+    )
 
 
 class TidalClient:
@@ -251,25 +296,42 @@ class TidalClient:
     def list_favorite_tracks(self, limit: int, offset: int) -> TrackPage:
         try:
             favorites = self.session.user.favorites
-            try:
-                items = favorites.tracks(
-                    limit=limit + 1,
-                    offset=offset,
-                    order=tidal_types.ItemOrder.Date,
-                    order_direction=tidal_types.OrderDirection.Descending,
-                )
-            except (AttributeError, TypeError):
-                items = favorites.tracks(
-                    limit=limit + 1,
-                    offset=offset,
-                    order="DATE",
-                    order_direction="DESC",
-                )
-            tracks = [format_track(item) for item in items]
             total = self._favorites_count(favorites, "get_tracks_count")
+            return _favorite_track_window(favorites, limit, offset, total)
         except Exception as exc:
             self._raise_operation_error("list favorite tracks", exc)
-        return self._track_page(tracks, limit, offset, total=total)
+
+    def favorite_track_window(self, limit: int, offset: int) -> TrackPage:
+        """Scan bounded collection positions using a single count for all requested pages."""
+        try:
+            favorites = self.session.user.favorites
+            total = int(favorites.get_tracks_count())
+            return _favorite_track_window(favorites, limit, offset, total)
+        except Exception as exc:
+            self._raise_operation_error("scan favorite tracks", exc)
+
+    def complete_playlist_tracks(self, playlist_id: str, max_tracks: int) -> list[Track]:
+        """Read every track window for recommendations, checking the budget before fetching."""
+        try:
+            playlist = self._resolve_playlist(playlist_id)
+            total = int(playlist.get_tracks_count())
+            if total > max_tracks:
+                raise TidalClientError(
+                    f"This playlist has {total} track positions. The scan limit is "
+                    f"{max_tracks}. Set max_playlist_tracks to cover the full playlist "
+                    "(maximum 2000). For larger playlists use tidal_recommend_tracks with "
+                    "selected seeds."
+                )
+            tracks = []
+            for offset in range(0, total, _PROVIDER_MAX_LIMIT):
+                size = min(_PROVIDER_MAX_LIMIT, total - offset)
+                rows = playlist.tracks(limit=size, offset=offset)
+                tracks.extend(format_track(row) for row in rows[:size])
+            return tracks
+        except TidalMCPError:
+            raise
+        except Exception as exc:
+            self._raise_operation_error("read all tracks for playlist recommendations", exc)
 
     def list_playlists(self, limit: int, offset: int) -> PlaylistPage:
         try:
@@ -613,8 +675,10 @@ class TidalClient:
             track = self.session.track(track_id)
             return [
                 format_track(item, source_seed_ids=[track_id])
-                for item in track.get_track_radio(limit=limit)
+                for item in track.get_track_radio(limit=limit)[:limit]
             ]
+        except MetadataNotAvailable as exc:
+            raise TrackRadioUnavailableError(f"TIDAL has no Track Radio for {track_id}.") from exc
         except Exception as exc:
             self._raise_operation_error(f"get radio recommendations for track {track_id}", exc)
 

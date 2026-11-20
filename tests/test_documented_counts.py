@@ -16,12 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 TOTAL = len(EXPECTED_TOOLS)
 REQUIRED_TOTAL = len(READ_TOOL_SPECS) + len(MUTATION_TOOL_SPECS)
-# Handwritten registrations: auth, search, favorite tracks, playlists, playlist tracks, collection,
-# summary, comparison, recommendation, export, and the two commit tools.
-HANDWRITTEN = 13
-# The catalog inventory plus the handwritten read tools. The two commit aliases are the only
-# registered tools that can write, and the mutation previews are counted separately.
-READS = TOTAL - len(MUTATION_TOOL_SPECS) - 2
+HANDWRITTEN = 15
+EXPORTS = 2
+COMMITS = 2
+READS = TOTAL - len(MUTATION_TOOL_SPECS) - EXPORTS - COMMITS
 
 
 def read(relative: str) -> str:
@@ -31,7 +29,7 @@ def read(relative: str) -> str:
 def test_the_registered_surface_matches_the_declared_inventory() -> None:
     assert REQUIRED_TOTAL + HANDWRITTEN == TOTAL
     assert READS == 84
-    assert TOTAL == 122
+    assert TOTAL == 124
 
 
 def test_both_expected_tool_sets_agree() -> None:
@@ -48,17 +46,18 @@ def test_both_expected_tool_sets_agree() -> None:
 def test_every_document_quotes_the_same_counts() -> None:
     readme = read("README.md")
     assert f"**{TOTAL} typed MCP tools**" in readme
-    assert f"**{TOTAL} discoverable tools:** {READS} reads" in readme
+    assert f"**{TOTAL} discoverable tools:** {READS} reads, {EXPORTS} local exports" in readme
 
     coverage = read("docs/API_COVERAGE.md")
     assert f"- {TOTAL} MCP tools with input and output schemas." in coverage
     assert f"- {READS} read-only tools." in coverage
+    assert f"- {EXPORTS} local export tools." in coverage
 
     llms = read("llms.txt")
     assert f"- {TOTAL} registered MCP tools with bounded input" in llms
     assert (
-        f"- {READS} read-only tools, {len(MUTATION_TOOL_SPECS)} local mutation-preview tools"
-        in llms
+        f"- {READS} read-only tools, {EXPORTS} local exports, "
+        f"{len(MUTATION_TOOL_SPECS)} local mutation-preview tools" in llms
     )
 
     registry = read("server.json")
@@ -76,7 +75,7 @@ def test_every_document_quotes_the_same_counts() -> None:
 
     site_llms = read("site/llms.txt")
     assert f"{TOTAL} typed tools" in site_llms
-    assert f"{TOTAL} named MCP tools: {READS} reads" in site_llms
+    assert f"{TOTAL} named MCP tools: {READS} reads, {EXPORTS} local exports" in site_llms
 
 
 def test_no_current_document_quotes_a_stale_count() -> None:

@@ -5,6 +5,18 @@ All notable changes to TIDAL MCP are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-20
+
+- Search saved tracks across title, primary artist, and album with
+  `tidal_search_favorite_tracks`. Its cursor advances across unavailable tracks.
+- Suggest additions with `tidal_recommend_for_playlist`. It uses playlist tracks as radio
+  seeds, checks the full visible playlist for existing recordings, and returns seed provenance.
+- Restore the session off the protocol event loop and share one initialization across
+  concurrent tool calls. Explicit-seed recommendations now accept the full 200 caller
+  exclusions alongside ten automatic seed exclusions.
+- Concurrent exports targeting the same filename now publish a single complete, private file.
+  Each competing export receives a filename conflict.
+
 ## [1.4.0] - 2026-10-07
 
 ### Added

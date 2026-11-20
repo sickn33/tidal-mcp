@@ -18,9 +18,9 @@ from tidal_mcp.catalog import (
     MutationToolSpec,
     ReadToolSpec,
 )
+from tidal_mcp.discovery import recommend_for_playlist, recommend_tracks, search_favorite_tracks
 from tidal_mcp.exceptions import DraftError, TidalMCPError
 from tidal_mcp.exports import write_derived_export, write_export
-from tidal_mcp.filtering import filter_recommendations
 from tidal_mcp.models import (
     ActionDraft,
     AuthStatus,
@@ -29,14 +29,15 @@ from tidal_mcp.models import (
     CollectionComparison,
     DerivedExportResult,
     ExportResult,
+    FavoriteTrackSearch,
     MutationResult,
     PlaylistPage,
+    PlaylistRecommendations,
     PlaylistSummary,
     RecommendationFilters,
     RecommendationResponse,
     SearchResponse,
     SearchType,
-    Track,
     TrackPage,
 )
 from tidal_mcp.prompts import register_prompts
@@ -67,18 +68,6 @@ def _as_tool_error(exc: TidalMCPError) -> ToolError:
     return ToolError(str(exc))
 
 
-def _merge_recommendations(items: list[Track]) -> list[Track]:
-    merged: dict[str, Track] = {}
-    for track in items:
-        existing = merged.get(track.id)
-        if existing is None:
-            merged[track.id] = track
-            continue
-        sources = list(dict.fromkeys([*existing.source_seed_ids, *track.source_seed_ids]))
-        merged[track.id] = existing.model_copy(update={"source_seed_ids": sources})
-    return list(merged.values())
-
-
 def _tool_signature(
     spec: ReadToolSpec | MutationToolSpec, result_type: type[Any]
 ) -> inspect.Signature:
@@ -97,7 +86,9 @@ def _tool_signature(
 def _make_read_handler(runtime: Runtime, spec: ReadToolSpec) -> Any:
     async def handler(**kwargs: Any) -> CatalogResult:
         try:
-            return await asyncio.to_thread(runtime.client().execute_read, spec.name, kwargs)
+            return await asyncio.to_thread(
+                (await runtime.connected_client()).execute_read, spec.name, kwargs
+            )
         except TidalMCPError as exc:
             raise _as_tool_error(exc) from exc
 
@@ -116,7 +107,7 @@ def _make_preview_handler(runtime: Runtime, spec: MutationToolSpec) -> Any:
             raise ToolError("Provide at least one of title or description for a playlist edit.")
         try:
             preview = await asyncio.to_thread(
-                runtime.client().preview_mutation,
+                (await runtime.connected_client()).preview_mutation,
                 spec.action,
                 payload,
             )
@@ -163,7 +154,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
             "TIDAL. Playlist creation requires an exact preview followed by an approved commit "
             "token."
         ),
-        version="1.4.0",
+        version="1.5.0",
     )
 
     @server.tool(title="Check TIDAL authentication", annotations=READ_ONLY)
@@ -191,7 +182,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         """Search TIDAL. This tool reads public catalog metadata and changes nothing."""
         try:
             return await asyncio.to_thread(
-                active_runtime.client().search,
+                (await active_runtime.connected_client()).search,
                 query,
                 media_types or [SearchType.TRACKS],
                 limit,
@@ -208,8 +199,30 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         """List saved tracks ordered from most recently added, with pagination metadata."""
         try:
             return await asyncio.to_thread(
-                active_runtime.client().list_favorite_tracks,
+                (await active_runtime.connected_client()).list_favorite_tracks,
                 limit,
+                offset,
+            )
+        except TidalMCPError as exc:
+            raise _as_tool_error(exc) from exc
+
+    @server.tool(title="Search your saved TIDAL tracks", annotations=READ_ONLY)
+    async def tidal_search_favorite_tracks(
+        query: Annotated[str, Field(min_length=1, max_length=200)],
+        scan_limit: Annotated[int, Field(ge=1, le=500)] = 100,
+        offset: Annotated[int, Field(ge=0)] = 0,
+    ) -> FavoriteTrackSearch:
+        """Find saved tracks by title, primary artist, or album. All words must match.
+
+        Search ignores case and accents. Each call checks up to scan_limit collection positions
+        in newest-saved order. Follow next_offset even when a window has zero matches.
+        """
+        try:
+            return await asyncio.to_thread(
+                search_favorite_tracks,
+                await active_runtime.connected_client(),
+                query,
+                scan_limit,
                 offset,
             )
         except TidalMCPError as exc:
@@ -222,7 +235,9 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
     ) -> PlaylistPage:
         """List the authenticated user's playlists without changing them."""
         try:
-            return await asyncio.to_thread(active_runtime.client().list_playlists, limit, offset)
+            return await asyncio.to_thread(
+                (await active_runtime.connected_client()).list_playlists, limit, offset
+            )
         except TidalMCPError as exc:
             raise _as_tool_error(exc) from exc
 
@@ -235,7 +250,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         """Read one playlist page by exact TIDAL playlist ID."""
         try:
             return await asyncio.to_thread(
-                active_runtime.client().get_playlist_tracks,
+                (await active_runtime.connected_client()).get_playlist_tracks,
                 playlist_id,
                 limit,
                 offset,
@@ -265,7 +280,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         """
         try:
             return await asyncio.to_thread(
-                active_runtime.client().collect_playlist_tracks,
+                (await active_runtime.connected_client()).collect_playlist_tracks,
                 playlist_id,
                 max_items,
             )
@@ -287,7 +302,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         """
         try:
             return await asyncio.to_thread(
-                active_runtime.client().summarize_playlist,
+                (await active_runtime.connected_client()).summarize_playlist,
                 playlist_id,
                 max_items,
                 top_artists,
@@ -309,7 +324,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         """
         try:
             return await asyncio.to_thread(
-                active_runtime.client().compare_playlists,
+                (await active_runtime.connected_client()).compare_playlists,
                 left_playlist_id,
                 right_playlist_id,
                 max_items,
@@ -338,14 +353,13 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
     ) -> ExportResult:
         """Write a playlist to a file inside the private export directory.
 
-        This is the only tool that writes to local disk. It never overwrites an existing file, it
-        sanitizes the requested name to a single path segment inside the export directory, and it
-        writes through a temporary file so a reader never sees a partial export. The export
-        contains public metadata and TIDAL URLs only; no media is downloaded.
+        It sanitizes the requested name to a single path segment and refuses an existing
+        destination. A temporary file holds the complete export before publication.
+        The export contains public metadata and TIDAL URLs.
         """
         try:
             title, collected = await asyncio.to_thread(
-                active_runtime.client().collect_playlist_for_export,
+                (await active_runtime.connected_client()).collect_playlist_for_export,
                 playlist_id,
                 max_items,
             )
@@ -410,7 +424,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         try:
             if kind == "summary":
                 summary = await asyncio.to_thread(
-                    active_runtime.client().summarize_playlist,
+                    (await active_runtime.connected_client()).summarize_playlist,
                     playlist_id,
                     max_items,
                     top_artists,
@@ -419,7 +433,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
                 suggested = summary.title or "tidal-summary"
             else:
                 comparison = await asyncio.to_thread(
-                    active_runtime.client().compare_playlists,
+                    (await active_runtime.connected_client()).compare_playlists,
                     playlist_id,
                     right_playlist_id,
                     max_items,
@@ -454,29 +468,43 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         be assessed by the calling model, while year, duration, explicitness, exclusions, and
         per-artist diversity are enforced here.
         """
-        resolved_filters = filters or RecommendationFilters()
-        exclusions = list(dict.fromkeys([*resolved_filters.exclude_track_ids, *seed_track_ids]))
-        resolved_filters = resolved_filters.model_copy(update={"exclude_track_ids": exclusions})
         try:
-            candidates: list[Track] = []
-            for seed_id in seed_track_ids:
-                candidates.extend(
-                    await asyncio.to_thread(
-                        active_runtime.client().get_track_radio,
-                        seed_id,
-                        limit_per_seed,
-                    )
-                )
-            merged = _merge_recommendations(candidates)
-            accepted, rejected = filter_recommendations(merged, resolved_filters)
-            returned = accepted[:max_results]
-            return RecommendationResponse(
-                seed_track_ids=seed_track_ids,
-                items=returned,
-                candidate_count=len(merged),
-                returned_count=len(returned),
-                filtered_out_count=rejected + max(0, len(accepted) - len(returned)),
-                filters=resolved_filters,
+            return await asyncio.to_thread(
+                recommend_tracks,
+                await active_runtime.connected_client(),
+                seed_track_ids,
+                limit_per_seed,
+                max_results,
+                filters,
+            )
+        except TidalMCPError as exc:
+            raise _as_tool_error(exc) from exc
+
+    @server.tool(title="Recommend additions to a TIDAL playlist", annotations=READ_ONLY)
+    async def tidal_recommend_for_playlist(
+        playlist_id: Annotated[str, Field(min_length=1, max_length=100)],
+        seed_count: Annotated[int, Field(ge=1, le=5)] = 3,
+        limit_per_seed: Annotated[int, Field(ge=1, le=25)] = 15,
+        max_results: Annotated[int, Field(ge=1, le=100)] = 20,
+        max_playlist_tracks: Annotated[int, Field(ge=1, le=2000)] = 500,
+        filters: RecommendationFilters | None = None,
+    ) -> PlaylistRecommendations:
+        """Suggest new tracks from Track Radio using seeds spread across the playlist.
+
+        Checks the whole visible track list and excludes existing IDs and matching ISRCs. A
+        playlist above max_playlist_tracks returns an error before radio lookup. Each suggestion
+        includes its source seed IDs. Seeds without a radio are listed in unavailable_seed_ids.
+        """
+        try:
+            return await asyncio.to_thread(
+                recommend_for_playlist,
+                await active_runtime.connected_client(),
+                playlist_id,
+                max_playlist_tracks,
+                seed_count,
+                limit_per_seed,
+                max_results,
+                filters,
             )
         except TidalMCPError as exc:
             raise _as_tool_error(exc) from exc
@@ -513,7 +541,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
             committing = active_runtime.draft_store.mark_action_committing(record)
             try:
                 result = await asyncio.to_thread(
-                    active_runtime.client().execute_mutation,
+                    (await active_runtime.connected_client()).execute_mutation,
                     committing.action,
                     committing.payload,
                 )

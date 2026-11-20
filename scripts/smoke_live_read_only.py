@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import sys
 import tempfile
 
@@ -65,6 +66,7 @@ async def _smoke(command: str, server_args: list[str], export_directory: str) ->
     )
     async with Client(parameters, raise_exceptions=True) as client:
         listed = await client.list_tools()
+        tool_names = {tool.name for tool in listed.tools}
         auth = await call(client, "tidal_auth_status", {})
         if not auth["authenticated"]:
             raise RuntimeError(f"TIDAL authentication is not valid: {auth['message']}")
@@ -79,9 +81,66 @@ async def _smoke(command: str, server_args: list[str], export_directory: str) ->
             },
         )
         favorites = await call(client, "tidal_list_favorite_tracks", {"limit": 2})
+        saved_search = None
+        if favorites["items"] and "tidal_search_favorite_tracks" in tool_names:
+            saved = favorites["items"][0]
+            found = await call(
+                client,
+                "tidal_search_favorite_tracks",
+                {
+                    "query": saved["title"][:200],
+                    "scan_limit": 51,
+                },
+            )
+            if saved["id"] not in {item["id"] for item in found["items"]}:
+                raise RuntimeError("Saved-track search missed a track in its first window")
+            saved_search = {"examined": found["scanned_count"], "matches": found["count"]}
         playlists = await call(client, "tidal_list_playlists", {"limit": 2})
         playlist_items = playlists["items"]
         favorite_counts = await call(client, "tidal_get_favorite_counts", {})
+
+        playlist_radio = None
+        playable = next((p for p in playlist_items if 0 < (p["track_count"] or 0) <= 500), None)
+        if playable and "tidal_recommend_for_playlist" in tool_names:
+            playlist_id = playable["id"]
+            known = await call(
+                client,
+                "tidal_collect_playlist_tracks",
+                {
+                    "playlist_id": playlist_id,
+                    "max_items": 500,
+                },
+            )
+            discovery = await call(
+                client,
+                "tidal_recommend_for_playlist",
+                {
+                    "playlist_id": playlist_id,
+                    "seed_count": 2,
+                    "limit_per_seed": 5,
+                },
+            )
+            known_ids = {t["id"] for t in known["items"]}
+
+            def code(track):
+                return (track.get("isrc") or "").upper().replace("-", "")
+
+            codes = {code(t) for t in known["items"]}
+            known_isrcs = {c for c in codes if re.fullmatch(r"[A-Z]{2}[A-Z0-9]{3}[0-9]{7}", c)}
+            seeds = set(discovery["seed_track_ids"])
+            if not seeds <= known_ids:
+                raise RuntimeError("Playlist discovery selected a seed outside the playlist")
+            for item in discovery["items"]:
+                if item["id"] in known_ids or code(item) in known_isrcs:
+                    raise RuntimeError("Playlist discovery returned a recording already present")
+                if not item["source_seed_ids"] or not set(item["source_seed_ids"]) <= seeds:
+                    raise RuntimeError("Playlist discovery returned a track without a valid seed")
+            playlist_radio = {
+                "checked": discovery["playlist_tracks_checked"],
+                "candidates": discovery["candidate_count"],
+                "already_present": discovery["already_in_playlist_count"],
+                "returned": discovery["returned_count"],
+            }
 
         # Editorial page navigation. Home and Explore are read together so the walk is proven on
         # both page generations: Home returns version-2 lists, Explore returns link lists.
@@ -281,6 +340,8 @@ async def _smoke(command: str, server_args: list[str], export_directory: str) ->
                         for name in ("tracks", "albums", "artists", "playlists")
                     },
                     "favorite_page_count": favorites["count"],
+                    "saved_track_search": saved_search,
+                    "playlist_radio": playlist_radio,
                     "playlist_page_count": playlists["count"],
                     "playlist_track_page_count": playlist_track_count,
                     "album_track_page_count": album_track_count,

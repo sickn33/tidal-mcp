@@ -8,11 +8,13 @@ server must never overwrite an existing file silently.
 from __future__ import annotations
 
 import json
+import os
 import re
+import tempfile
 from pathlib import Path
 from typing import Any
 
-from tidal_mcp.config import ensure_private_directory, secure_file
+from tidal_mcp.config import ensure_private_directory
 from tidal_mcp.exceptions import ExportError
 from tidal_mcp.models import DerivedExportResult, ExportResult, Track
 
@@ -105,23 +107,27 @@ def _write_atomically(
     directory is created privately, the name is reduced to one path segment, and the write goes
     through a temporary file that is moved into place only once it is complete.
     """
-    directory = ensure_private_directory(export_dir)
     filename = safe_filename(suggested_name, suffix=suffix)
-    target = directory / filename
-    if target.exists():
-        raise ExportError(
-            f"{filename} already exists in the export directory. Choose another name."
-        )
-    temporary = directory / f".{filename}.partial"
+    data = content.encode("utf-8")
     try:
-        temporary.write_text(content, encoding="utf-8")
-        secure_file(temporary)
-        temporary.replace(target)
-        secure_file(target)
-    finally:
-        if temporary.exists():
-            temporary.unlink()
-    return target, len(content.encode("utf-8"))
+        directory = ensure_private_directory(export_dir).absolute()
+        target = directory / filename
+        with tempfile.NamedTemporaryFile(dir=directory, prefix=".tidal-export-") as temporary:
+            temporary.write(data)
+            temporary.flush()
+            # Publish the completed inode only if this name is still available.
+            try:
+                os.link(temporary.name, target)
+            except FileExistsError as exc:
+                raise ExportError(
+                    f"{filename} already exists in the export directory. Choose another name."
+                ) from exc
+    except OSError as exc:
+        raise ExportError(
+            "Could not save the export. Check free space, directory permissions, and "
+            "support for hard links in the configured export directory."
+        ) from exc
+    return target, len(data)
 
 
 def render_derived_json(payload: dict[str, Any]) -> str:

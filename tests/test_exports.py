@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 from types import SimpleNamespace
 
 import pytest
@@ -127,8 +130,8 @@ def test_write_export_leaves_no_partial_file_behind_on_failure(
     def explode(*_args: object, **_kwargs: object) -> None:
         raise OSError("disk full")
 
-    monkeypatch.setattr(Path, "replace", explode)
-    with pytest.raises(OSError):
+    monkeypatch.setattr(os, "link", explode)
+    with pytest.raises(ExportError, match="Could not save"):
         write_export(
             export_dir=directory,
             playlist_id="p1",
@@ -139,6 +142,38 @@ def test_write_export_leaves_no_partial_file_behind_on_failure(
             truncated=False,
         )
     assert [entry.name for entry in directory.iterdir()] == []
+
+
+def test_concurrent_exports_publish_exactly_one_complete_file(tmp_path: Path, monkeypatch) -> None:
+    ready = Barrier(2)
+    publish = os.link
+
+    def publish_together(source, destination):
+        ready.wait(timeout=5)
+        publish(source, destination)
+
+    monkeypatch.setattr(os, "link", publish_together)
+
+    def export(writer):
+        try:
+            write_derived_export(
+                export_dir=tmp_path,
+                kind="summary",
+                suggested_name="Shared",
+                payload={"writer": writer},
+            )
+        except ExportError as exc:
+            assert "already exists" in str(exc)
+            return None
+        return writer
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(export, ["first", "second"]))
+    (winner,) = [writer for writer in results if writer is not None]
+    (target,) = tmp_path.iterdir()
+    assert target.name == "Shared.json"
+    assert json.loads(target.read_text()) == {"writer": winner}
+    assert target.stat().st_mode & 0o777 == 0o600
 
 
 def test_export_reports_truncation(tmp_path: Path) -> None:
@@ -362,8 +397,8 @@ def test_derived_export_shares_the_atomic_writer(tmp_path: Path, monkeypatch) ->
     def explode(*_args: object, **_kwargs: object) -> None:
         raise OSError("disk full")
 
-    monkeypatch.setattr(Path, "replace", explode)
-    with pytest.raises(OSError):
+    monkeypatch.setattr(os, "link", explode)
+    with pytest.raises(ExportError, match="Could not save"):
         write_derived_export(
             export_dir=directory,
             kind="summary",

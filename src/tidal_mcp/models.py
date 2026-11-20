@@ -94,6 +94,14 @@ class TrackPage(StrictModel):
     next_offset: int | None = Field(default=None, ge=0)
 
 
+class FavoriteTrackSearch(TrackPage):
+    """Matches in a window of saved tracks, ordered from most recently added."""
+
+    query: str
+    limit: int = Field(ge=1, description="Number of collection positions requested.")
+    scanned_count: int = Field(ge=0, description="Visible tracks examined in this window.")
+
+
 class PlaylistPage(StrictModel):
     items: list[Playlist]
     count: int = Field(ge=0)
@@ -150,13 +158,30 @@ class RecommendationFilters(StrictModel):
         return self
 
 
+class AppliedRecommendationFilters(RecommendationFilters):
+    """The caller's exclusions plus up to ten automatically excluded seed IDs."""
+
+    exclude_track_ids: list[str] = Field(default_factory=list, max_length=210)
+
+
 class RecommendationResponse(StrictModel):
     seed_track_ids: list[str]
     items: list[Track]
     candidate_count: int = Field(ge=0)
     returned_count: int = Field(ge=0)
     filtered_out_count: int = Field(ge=0)
-    filters: RecommendationFilters
+    filters: AppliedRecommendationFilters
+
+
+class PlaylistRecommendations(RecommendationResponse):
+    playlist_id: str
+    playlist_tracks_checked: int = Field(ge=0)
+    already_in_playlist_count: int = Field(
+        ge=0, description="Distinct radio candidate IDs matching a playlist track ID or ISRC."
+    )
+    unavailable_seed_ids: list[str] = Field(
+        description="Selected seeds for which TIDAL has no Track Radio."
+    )
 
 
 class CollectedTracks(StrictModel):

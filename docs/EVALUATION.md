@@ -19,11 +19,13 @@ must cite returned IDs and distinguish TIDAL metadata from model inference.
 10. Prepare, but do not commit, a preview that adds selected recommendations to a new playlist;
     verify title, description, ordered IDs, expiry, write state, and destructive flag.
 
-The live smoke script intentionally samples representative operations instead of executing all 73
-reads against the real account on every run. The exhaustive route matrix is deterministic and runs
-offline in the test suite.
+The live smoke script samples representative reads on the real account. The exhaustive route
+matrix runs offline in the test suite.
 
 The live sample covers the surfaces most likely to break silently: search across four media types,
 favorites and playlist pagination, track detail, recommendations, editorial page navigation on
 both page generations, a current-generation mix body, video search, and the track ISRC field. It
 runs with `TIDAL_MCP_ENABLE_WRITES` removed from the environment, so it cannot mutate the account.
+On a server offering saved-track search it also looks up a known favorite. With a playlist of
+up to 500 tracks it checks recommendation IDs, ISRCs, and seed provenance against a separate
+read of the playlist. The deterministic fixtures exercise both workflows on every test run.

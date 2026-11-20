@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from threading import Lock
 
 from tidal_mcp.client import MusicClient, TidalClient
 from tidal_mcp.config import Settings
@@ -19,6 +21,7 @@ class Runtime:
     auth_status_checker: Callable[[], AuthStatus]
     draft_store: DraftStore
     _client: MusicClient | None = field(default=None, init=False, repr=False)
+    _client_lock: Lock = field(default_factory=Lock, init=False, repr=False)
 
     @classmethod
     def from_settings(cls, settings: Settings | None = None) -> Runtime:
@@ -36,8 +39,15 @@ class Runtime:
         )
 
     def client(self) -> MusicClient:
+        with self._client_lock:
+            if self._client is None:
+                self._client = self.client_factory()
+            return self._client
+
+    async def connected_client(self) -> MusicClient:
+        """Restore the session once without blocking other MCP requests on first use."""
         if self._client is None:
-            self._client = self.client_factory()
+            return await asyncio.to_thread(self.client)
         return self._client
 
     def auth_status(self) -> AuthStatus:

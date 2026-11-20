@@ -2,19 +2,19 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.sickn33/tidal-mcp",
   "title": "TIDAL MCP",
-  "description": "Search, analyze, organize, and safely modify TIDAL through 122 typed MCP tools.",
+  "description": "Search, analyze, organize, and safely modify TIDAL through 124 typed MCP tools.",
   "repository": {
     "url": "https://github.com/sickn33/tidal-mcp",
     "source": "github"
   },
-  "version": "1.4.0",
+  "version": "1.5.0",
   "websiteUrl": "https://github.com/sickn33/tidal-mcp#readme",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@sickn33/tidal-mcp",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "runtimeHint": "npx",
       "runtimeArguments": [
         {

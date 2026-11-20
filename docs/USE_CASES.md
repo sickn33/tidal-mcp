@@ -51,7 +51,11 @@ for a different name rather than clearing an existing file.
 > tracks already present, allow at most two tracks per artist, and keep only non-explicit releases
 > from 2020 onward. Explain which rules removed candidates.
 
-`tidal_recommend_tracks` performs deterministic metadata filtering and retains seed provenance.
+`tidal_recommend_for_playlist` accepts the playlist ID, selects seeds across its track order,
+and checks every visible track before proposing additions. Each result links back to the seeds
+whose Track Radio returned that track ID. The response also counts candidates already present
+by ID or ISRC. A recording without a usable ISRC can only be recognized by its TIDAL ID.
+For hand-picked seeds, use `tidal_recommend_tracks`. Both tools apply the same metadata filters.
 Mood, energy, tempo, and acoustic character should be described as model inference unless returned
 by a specific upstream field.
 
@@ -70,6 +74,14 @@ preview, it can pass the returned token to `tidal_commit_action`.
 
 The server exposes dedicated favorite-list and aggregate-count tools rather than requiring raw
 endpoint access.
+
+## Find a song you saved
+
+> I remember saving something by Beyoncé from Lemonade. Which tracks are in my favorites?
+
+Call `tidal_search_favorite_tracks` with `query="beyonce lemonade"`. Words may match different
+fields across the title, primary artist, and album. Results are newest-saved first. Repeat the
+query with the returned `next_offset` to search the next window, even after zero matches.
 
 ## Explore an artist deeply
 

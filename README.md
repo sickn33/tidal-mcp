@@ -13,7 +13,7 @@
 **TIDAL MCP** connects Codex, Claude Desktop, Claude Code, Cursor, and other
 stdio-compatible Model Context Protocol clients to a TIDAL account. Search the catalog,
 analyze playlists, discover music, read lyrics, manage favorites, organize folders,
-and safely create or edit playlists through **122 typed MCP tools**.
+and safely create or edit playlists through **124 typed MCP tools**.
 
 > **Positioning:** in the September 4, 2026 review, this was the most complete public TIDAL MCP
 > implementation found in a reproducible review of the current GitHub landscape. The claim is
@@ -28,7 +28,7 @@ Most TIDAL integrations expose a small selection of search and playlist commands
 built as a complete local control surface for AI agents while keeping credentials and approvals
 on your machine.
 
-- **122 discoverable tools:** 84 reads, 36 mutation previews, and 2 approval-token commits.
+- **124 discoverable tools:** 84 reads, 2 local exports, 36 mutation previews, and 2 approval-token commits.
 - **Broad account coverage:** catalog, editorial pages, recommendations, lyrics, favorites,
   playlists, folders, mixes, images, and playback metadata.
 - **Safe writes:** mutations are off by default and always require preview → explicit approval →
@@ -42,6 +42,9 @@ on your machine.
 
 Ask naturally:
 
+- “Which of my saved tracks by Beyoncé have Lemonade in the album title?”
+- “Suggest ten songs for this playlist. Skip recordings that are already in it and show which
+  playlist tracks led to each suggestion.”
 - “Analyze my entire workout playlist: artist concentration, eras, duplicates, duration, and
   sequencing.”
 - “Find 20 tracks related to these three songs, exclude anything already in my playlist, and use
@@ -59,15 +62,15 @@ See [real-world workflows and prompt examples](docs/USE_CASES.md).
 
 | Surface | Tools | Examples |
 | --- | ---: | --- |
-| Authentication, search, recommendations | 3 | status, multi-type search, deterministic multi-seed recommendations |
+| Authentication, search, recommendations | 4 | status, catalog search, manual-seed and playlist-seeded recommendations |
 | Catalog, editorial, discovery | 54 | tracks, albums, artists, videos, lyrics, genres, Home, Explore, For You |
-| Collection, playlists, folders | 22 | favorites, counts, playlist items, owned/public playlists, folders, mixes |
+| Collection, playlists, folders | 23 | favorite-track search, favorites, counts, playlist items, owned/public playlists, folders, mixes |
 | Derived analysis | 3 | full-playlist collection, playlist summary, playlist comparison |
 | Local export | 2 | playlist to JSON or M3U, and summaries or comparisons to JSON |
 | Exact mutation previews | 36 | playlist CRUD, item moves, visibility, favorites, folders |
 | Approval-token commits | 2 | universal commit and compatible playlist-creation alias |
 
-The table sums to the **122** registered tools. Four MCP prompts are registered alongside them
+The table sums to the **124** registered tools. Four MCP prompts are registered alongside them
 (playlist-from-description, playlist review, discovery digest, library audit); prompts are guidance
 over the tools, so they are not counted as tools.
 
@@ -196,7 +199,7 @@ uv build
 
 The coverage gate is **100% for statements and branches**. Tests exercise every registered read
 and mutation route through the MCP schemas and the pinned `tidalapi` adapter without contacting
-TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 122 tool
+TIDAL. The stdio smoke test launches the packaged protocol process and verifies all 124 tool
 schemas.
 
 Official releases are published from GitHub Actions through npm Trusted Publishing, with no
@@ -215,7 +218,7 @@ Release maintainers can test the exact public npm package through the same MCP c
 uv run python scripts/smoke_live_read_only.py \
   --command npx \
   --server-arg=-y \
-  --server-arg=@sickn33/tidal-mcp@1.4.0
+  --server-arg=@sickn33/tidal-mcp@1.5.0
 ```
 
 The deterministic [evaluation suite](docs/EVALUATION.md) and the dated
@@ -246,7 +249,7 @@ directories.
 
 ## Project status
 
-Version **1.4.0** adds export of a playlist summary or comparison to JSON, and reduces the network cost of every playlist tool by resolving each playlist once per call.
+Version **1.5.0** adds saved-track search and playlist-seeded recommendations, bringing the server to 124 tools.
 
 ## License, attribution, and trademark notice
 

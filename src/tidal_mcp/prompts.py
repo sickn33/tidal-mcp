@@ -144,12 +144,12 @@ def register_prompts(server: MCPServer, runtime: object) -> None:
                         "Audit my saved TIDAL collection.",
                         "",
                         "1. Start with `tidal_get_favorite_counts` for the exact totals.",
-                        "2. Read the favorites you care about with the `tidal_list_favorite_*` "
+                        "2. Use `tidal_search_favorite_tracks` for a particular title, artist, "
+                        "or album. Read whole collections with the `tidal_list_favorite_*` "
                         "tools. Walk pages until `has_more` is false; a short or empty page is not "
                         "the end of the collection, only `has_more` is authoritative.",
-                        "3. Report the totals, then flag anything notable: artists saved but never "
-                        "played, playlist folders that look abandoned, overlaps between your saved "
-                        "playlists.",
+                        "3. Report the totals, then identify empty folders or overlaps between "
+                        "selected saved playlists using their contents.",
                         "",
                         "Report only what the tools return. Do not remove or reorder anything. "
                         "`tidal_compare_playlists` is useful for spotting overlap between two "

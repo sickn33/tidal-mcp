@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from tidal_mcp.exceptions import TidalClientError
 from tidal_mcp.models import (
     Album,
     Artist,
@@ -144,6 +145,15 @@ class FakeMusicClient:
         items = [TRACKS["t-3"], TRACKS["t-2"], TRACKS["t-1"]]
         return self._page(items, limit, offset)
 
+    def favorite_track_window(self, limit: int, offset: int) -> TrackPage:
+        return self.list_favorite_tracks(limit, offset)
+
+    def complete_playlist_tracks(self, playlist_id: str, max_tracks: int) -> list[Track]:
+        tracks = self.get_playlist_tracks(playlist_id, 50, 0).items
+        if len(tracks) > max_tracks:
+            raise TidalClientError("Playlist exceeds max_playlist_tracks.")
+        return tracks
+
     def list_playlists(self, limit: int, offset: int) -> PlaylistPage:
         items = [PLAYLIST][offset : offset + limit]
         return PlaylistPage(
@@ -231,6 +241,11 @@ class FakeMusicClient:
                 TRACKS["t-5"].model_copy(update={"source_seed_ids": ["seed-2"]}),
             ],
         }
+        if track_id in {"t-1", "t-2", "t-3"}:
+            return [
+                TRACKS[item].model_copy(update={"source_seed_ids": [track_id]})
+                for item in ("t-1", "t-4", "t-5")[:limit]
+            ]
         return radios.get(track_id, [])[:limit]
 
     def resolve_tracks(self, track_ids: Sequence[str]) -> list[Track]:
